@@ -92,19 +92,18 @@ export async function run(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  // G8: core intercepts help tokens so every uck gets usage for free.
-  // Priority: uck.help (verbatim) > uck.about > uck's own run() (all current
-  // ucks print usage for bare/--help, so the handoff is a no-regression path).
+  // G8: core intercepts BARE help — `f <uck>` alone, or `f <uck> --help`/
+  // `-h`/`help` with no other tokens — and prints uck.help (verbatim) >
+  // uck.about. No such export? Fall through to the uck's own run() (every
+  // current uck prints usage itself). Subcommand help (`f uck cmd --help`)
+  // always goes to the uck.
   const helpToken = rest[0];
-  if (helpToken === "--help" || helpToken === "-h" || helpToken === "help") {
-    if (typeof uck.help === "string") {
-      console.log(`${name}  ${uck.desc ?? ""}\n\n${uck.help}`);
-      return;
-    }
-    if (typeof uck.about === "string") {
-      console.log(`${name}  ${uck.desc ?? ""}\n\n${uck.about}`);
-      return;
-    }
+  const isBareHelp =
+    rest.length === 0 ||
+    (rest.length === 1 && (helpToken === "--help" || helpToken === "-h" || helpToken === "help"));
+  if (isBareHelp && (typeof uck.help === "string" || typeof uck.about === "string")) {
+    console.log(`${name}  ${uck.desc ?? ""}\n\n${(uck.help ?? uck.about) as string}`);
+    return;
   }
 
   try {
