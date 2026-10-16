@@ -53,15 +53,21 @@ export async function run(argv: string[]): Promise<void> {
 
   // Load ucks: from the store, then from any npm sources in node_modules.
   const ucks: Record<string, Uck> = {};
+  // Where each name currently comes from — for the shadowing warning (G9).
+  const origin: Record<string, string> = {};
 
   for (const u of await loadStoreUcks(fVersion)) {
+    if (ucks[u.name]) console.error(`f: uck '${u.name}' shadowed (store) by a later source`);
     ucks[u.name] = u;
+    origin[u.name] = "store";
   }
   for (const src of allSources()) {
     const specifier = typeof src === "string" ? src : src.source;
     if (specifierIsGit(specifier) || looksLocal(specifier)) continue;
     for (const u of await loadFromNodeModules(specifier, fVersion)) {
+      if (ucks[u.name]) console.error(`f: uck '${u.name}' shadowed by npm:${specifier}`);
       ucks[u.name] = u; // later (project) sources override store/builtins
+      origin[u.name] = `npm:${specifier}`;
     }
   }
 
@@ -86,10 +92,38 @@ export async function run(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
+  // G8: core intercepts help tokens so every uck gets usage for free. The
+  // uck's own run() still sees them when the uck wants to override (it can
+  // inspect rest[0]); but when the uck exports no `help` text, core answers.
+  // Interception only fires for the bare-help forms, not for subcommand help.
+  const helpToken = rest[0];
+  if (helpToken === "--help" || helpToken === "-h" || helpToken === "help") {
+    if (typeof uck.help === "string") {
+      console.log(`${name}  ${uck.desc ?? ""}\n\n${uck.help}`);
+      return;
+    }
+    if (typeof uck.about === "string") {
+      console.log(`${name}  ${uck.desc ?? ""}\n\n${uck.about}`);
+      return;
+    }
+    // No uck-provided text: hand off to the uck's own run() (most ucks print usage).
+  }
+
   try {
     const uckList = Object.values(ucks).map((u) => ({ name: u.name, desc: u.desc }));
-    const ctx: UckRunContext = { fVersion, ucks: uckList, self: name, registry: ucks };
-    await uck.run(rest, uck.argv?.(rest) ?? { _: rest }, ctx);
+    const registry = ucks;
+    const ctx: UckRunContext = {
+      fVersion,
+      ucks: uckList,
+      self: name,
+      registry,
+      // G4: sanctioned peer accessor. `registry` stays as a read-only alias
+      // through 0.x and is removed at 1.0.
+      uck: (n: string) => registry[n],
+    };
+    // G3: a numeric return maps to process.exitCode; undefined → 0.
+    const result = await uck.run(rest, uck.argv?.(rest) ?? { _: rest }, ctx);
+    if (typeof result === "number" && result !== 0) process.exitCode = result;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`f: ${msg}`);

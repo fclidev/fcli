@@ -2,13 +2,13 @@ import { existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import type { Uck, UckContext, UckModule, UckSource } from "./types.js";
+import { clampDesc, satisfiesMinF, type Uck, type UckContext, type UckModule, type UckSource } from "./types.js";
 import { resolvedUcks } from "./store.js";
 
 const require = createRequire(import.meta.url);
 
 /** Normalize a UckSource to a specifier string. */
-export function normalizeSource(src: UckSource): { label: string; specifier: string } {
+export function normalizeSource(src: { source: string; ref?: string } | string): { label: string; specifier: string } {
   if (typeof src === "string") {
     return { label: src, specifier: src };
   }
@@ -30,7 +30,10 @@ function toImportUrl(entry: string): string {
   return pathToFileURL(abs).href;
 }
 
-/** Load every uck in the store, in stable load order. Later buckets shadow earlier ones. */
+/** Load every uck in the store, in stable load order. Later buckets shadow earlier ones.
+ *
+ * `originOf(name)` reports where a store uck came from (its bucket name) for
+ * collision warnings. */
 export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
   const ucks = resolvedUcks();
   const results: Uck[] = [];
@@ -40,18 +43,24 @@ export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
     const indexPath = join(dir, "index.js");
     if (!existsSync(indexPath)) continue;
 
-    const results2 = await loadUckModule(indexPath, name, fVersion);
+    const results2 = await loadUckModule(indexPath, name, fVersion, `store:${name}`);
     results.push(...results2);
   }
 
   return results;
 }
 
-/** Load a single uck module (index.js) and run its register(). */
+/**
+ * Load a single uck module (index.js) and run its register().
+ *
+ * `origin` names where the uck came from (bucket or npm specifier) and is used
+ * in the name-collision warning when the same uck name registers twice.
+ */
 async function loadUckModule(
   indexPath: string,
   self: string,
-  fVersion: string
+  fVersion: string,
+  origin: string
 ): Promise<Uck[]> {
   let mod: UckModule;
   try {
@@ -80,7 +89,16 @@ async function loadUckModule(
 
   const out: Uck[] = [];
   for (const u of newUcks) {
-    if (!u.name || typeof u.run !== "function") continue;
+    if (!u.name || typeof u.run !== "function") {
+      console.error(`f: uck '${self}' (${origin}): register() returned an invalid uck (needs name + run)`);
+      continue;
+    }
+    // G2: desc is one line, capped. Clamp here so f help and ctx.ucks agree.
+    u.desc = clampDesc(u.desc ?? "");
+    // G1: version negotiation — warn once, still load.
+    if (typeof u.minF === "string" && u.minF && !satisfiesMinF(fVersion, u.minF)) {
+      console.error(`f: uck '${u.name}' needs f >= ${u.minF} (running ${fVersion}); it may not work`);
+    }
     out.push(u);
   }
   return out;
@@ -90,7 +108,7 @@ async function loadUckModule(
  * Load ucks from an npm/git source that is already installed in node_modules
  * (not in the store). Used for sources that resolve via the package system.
  */
-async function loadFromNodeModules(specifier: string, fVersion: string): Promise<Uck[]> {
+export async function loadFromNodeModules(specifier: string, fVersion: string): Promise<Uck[]> {
   let resolved: string;
   try {
     resolved = require.resolve(specifier);
@@ -99,7 +117,5 @@ async function loadFromNodeModules(specifier: string, fVersion: string): Promise
     return [];
   }
   const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
-  return loadUckModule(resolved, name, fVersion);
+  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`);
 }
-
-export { loadFromNodeModules };
