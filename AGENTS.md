@@ -45,24 +45,38 @@ src/update.ts     # f up: force re-fetch all sources
 
 ## The uck contract (src/types.ts)
 
+**The normative contract lives in `CONTRACT.md` in the `fcli-ucks` repo**
+(github.com/kensand/fcli-ucks) — read it before changing loader/dispatch
+behavior. Summary:
+
 A uck module (`<dir>/index.js`) exports:
 
 ```js
 export function register(ctx) {
-  // ctx: { fVersion, ucks: [{name, desc}], self }
-  return {                       // or an array of these
-    name: "myuck",               // required; the `f myuck` command
-    desc: "terse description",   // shown in f help
-    run: (argv, args) => { ... },// args._ = remaining CLI args
+  // ctx: { fVersion, self }
+  return {
+    name: "myuck",               // required; the `f myuck` command; one per dir (G10)
+    desc: "terse, one line",     // capped at 120 chars by the loader (G2)
+    about?: "longer usage",      // printed by core's bare --help interception (G8)
+    minF?: "0.3.0",              // minimum f version; core warns on mismatch (G1)
+    run: (argv, args, ctx) => {  // args._ = remaining CLI args; ctx has registry + ctx.uck(name)
+      // may return void|number (number -> process.exitCode, G3) or throw
+    },
     // argv?: (argv) => args     // optional custom arg parser
   };
 }
 export default { register };
 ```
 
-`register()` runs once at load; `run()` runs per invocation. A uck may return
-one object or an array. Invalid ucks (missing `name`/`run`) are skipped with a
-console error, not fatal.
+`register()` runs once at load; `run()` runs per invocation. **One uck per
+directory** (a multi-uck `register()` returns only its first entry, with a
+warning). Invalid ucks (missing `name`/`run`) are skipped with a console
+error, not fatal. Exit contract: failure = throw or non-zero
+`process.exitCode`, never a quiet `exit(0)`/return.
+
+Peer APIs (e.g. `creds.credsApi`, `credentialProvider`) are documented in
+CONTRACT.md §5–§7. Peers classify creds errors **structurally**
+(`CredsError.kind`, `credsApi.version >= 1`), never by message text.
 
 ## Key invariants — don't break these
 
