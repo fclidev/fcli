@@ -92,10 +92,9 @@ export async function run(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  // G8: core intercepts help tokens so every uck gets usage for free. The
-  // uck's own run() still sees them when the uck wants to override (it can
-  // inspect rest[0]); but when the uck exports no `help` text, core answers.
-  // Interception only fires for the bare-help forms, not for subcommand help.
+  // G8: core intercepts help tokens so every uck gets usage for free.
+  // Priority: uck.help (verbatim) > uck.about > uck's own run() (all current
+  // ucks print usage for bare/--help, so the handoff is a no-regression path).
   const helpToken = rest[0];
   if (helpToken === "--help" || helpToken === "-h" || helpToken === "help") {
     if (typeof uck.help === "string") {
@@ -106,7 +105,6 @@ export async function run(argv: string[]): Promise<void> {
       console.log(`${name}  ${uck.desc ?? ""}\n\n${uck.about}`);
       return;
     }
-    // No uck-provided text: hand off to the uck's own run() (most ucks print usage).
   }
 
   try {

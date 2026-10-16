@@ -56,7 +56,7 @@ export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
  * `origin` names where the uck came from (bucket or npm specifier) and is used
  * in the name-collision warning when the same uck name registers twice.
  */
-async function loadUckModule(
+export async function loadUckModule(
   indexPath: string,
   self: string,
   fVersion: string,
@@ -86,6 +86,14 @@ async function loadUckModule(
   }
 
   if (!Array.isArray(newUcks)) newUcks = [newUcks];
+
+  // G10: one uck per directory. A register() returning multiple objects is
+  // ambiguous (ctx.self would be wrong for all but one), so core loads only
+  // the first and warns. Contract: split multi-uck dirs into one dir each.
+  if (newUcks.length > 1) {
+    console.error(`f: uck dir '${self}' (${origin}) registered ${newUcks.length} ucks; loading only '${newUcks[0].name}' — one uck per directory, split the rest into their own dirs`);
+    newUcks = newUcks.slice(0, 1);
+  }
 
   const out: Uck[] = [];
   for (const u of newUcks) {
