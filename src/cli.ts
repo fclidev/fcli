@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadStoreUcks, loadFromNodeModules, snapshot } from "./registry.js";
+import { loadStoreUcks, loadFromNodeModules, snapshot, sourceKind } from "./registry.js";
 import { ensureGlobalConfig, allSources } from "./config.js";
 import { installSource, installedUcks } from "./store.js";
+import { acquireStoreLock } from "./lock.js";
 import { updateAll } from "./update.js";
 import { help } from "./help.js";
 import { type Uck, type UckRunContext, CONTRACT_VERSION } from "./types.js";
@@ -42,12 +43,19 @@ export async function run(argv: string[]): Promise<void> {
   // store is empty (first install); `f up` forces re-fetch. Local ucks always
   // install (cheap, no network).
   const storeEmpty = installedUcks().length === 0;
-  for (const src of allSources()) {
-    const specifier = typeof src === "string" ? src : src.source;
-    const local = looksLocal(specifier);
-    const git = specifierIsGit(specifier);
-    if (local || (storeEmpty && git)) {
-      await installSource(src, false);
+  if (needsInstall(storeEmpty)) {
+    const release = await acquireStoreLock();
+    try {
+      for (const src of allSources()) {
+        const specifier = typeof src === "string" ? src : src.source;
+        const local = looksLocal(specifier);
+        const git = specifierIsGit(specifier);
+        if (local || (storeEmpty && git)) {
+          await installSource(src, false);
+        }
+      }
+    } finally {
+      release();
     }
   }
 
@@ -89,8 +97,10 @@ export async function run(argv: string[]): Promise<void> {
 
   const uck: Uck | undefined = ucks[name];
   if (!uck) {
+    // exitCode + return, never exit(): see the note at the bottom.
     console.error(`f: unknown uck '${name}'. Run 'f help' to list ucks.`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // G8: core intercepts BARE help — `f <uck>` alone, or `f <uck> --help`/
@@ -129,13 +139,44 @@ export async function run(argv: string[]): Promise<void> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`f: ${msg}`);
-    process.exit(1);
+    process.exitCode = 1;
   }
+}
+
+/*
+ * Why `process.exitCode` and never `process.exit(1)` on these two paths.
+ *
+ * process.exit() terminates immediately, and Node's stdout writes are queued
+ * when stdout is not a TTY — the normal way f is invoked (an agent captures
+ * output, `f x | head`). Anything already "written" can still be sitting in
+ * libuv's buffer, so a uck that printed its answer and then threw had the
+ * answer dropped. Measured on Linux 7.2 (pipes are synchronous since Linux
+ * 2.6.35, so this kernel drains ~1 MB before it starts dropping) a piped
+ * write() of ~640 KB lost 1,110 bytes to exit(1): the truncation is real but
+ * environment-dependent, which means "was the reader draining at that instant"
+ * decided how much of a printed secret survived — not a policy for secrets
+ * (CONTRACT.md N17).
+ *
+ * exitCode also fixes a second, cheaper bug: the unknown-uck path discarded
+ * everything written earlier in the same run (install/load output), because
+ * exit() skips the drain entirely.
+ *
+ * Nothing here keeps the event loop alive — core holds no timers, servers or
+ * child handles on these paths (the one timeout in update.ts is cleared when
+ * its request settles) — so normal completion always follows. If that stops
+ * being true, close the loop explicitly on return; do not reach for exit(),
+ * which is what lost output in the first place.
+ */
+
+/** Does this run have anything to install? Avoids taking the lock when idle. */
+function needsInstall(storeEmpty: boolean): boolean {
+  if (storeEmpty) return true;
+  return allSources().some((src) => looksLocal(typeof src === "string" ? src : src.source));
 }
 
 function looksLocal(s: string): boolean {
   return s.startsWith("./") || s.startsWith("../") || s.startsWith("/");
 }
 function specifierIsGit(s: string): boolean {
-  return /^(git\+)?(https?|ssh):\/\//.test(s) || s.startsWith("github:") || s.startsWith("git@");
+  return sourceKind(s) === "git";
 }

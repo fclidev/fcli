@@ -9,6 +9,7 @@ import {
   installedRepos,
   sourceBucket,
 } from "./store.js";
+import { acquireStoreLock } from "./lock.js";
 import type { UckSource } from "./types.js";
 
 const CORE_PKG = "@fcli.dev/f";
@@ -112,7 +113,9 @@ export async function updateCore(): Promise<void> {
  *   - with --force the user is asked once, up front, naming every dirty
  *     bucket, and the run aborts on a "no" (or on non-interactive stdin).
  */
-export async function updateAll(opts: { force?: boolean } = {}): Promise<void> {
+export async function updateAll(
+  opts: { force?: boolean; __noLockForTests?: boolean } = {}
+): Promise<void> {
   // 1. Update the core CLI first (so any uck code that depends on newer core
   //    gets it before the store is refreshed).
   await updateCore();
@@ -139,7 +142,7 @@ export async function updateAll(opts: { force?: boolean } = {}): Promise<void> {
       // Leave the dirty buckets untouched; update the rest as normal.
       const dirtySet = new Set(dirty.map((d) => d.bucket));
       const rest = sources.filter((src) => !dirtySet.has(sourceBucket(src)));
-      await runSources(rest);
+      await runSources(rest, opts);
       return;
     }
     if (!await confirm(`f up: discard local changes in ${dirty.length} bucket(s)? [y/N] `)) {
@@ -148,19 +151,33 @@ export async function updateAll(opts: { force?: boolean } = {}): Promise<void> {
     }
   }
 
-  await runSources(sources);
+  await runSources(sources, opts);
 }
 
-async function runSources(sources: UckSource[]): Promise<void> {
+async function runSources(
+  sources: UckSource[],
+  opts: { __noLockForTests?: boolean } = {}
+): Promise<void> {
   let ok = 0;
   let fail = 0;
-  for (const src of sources) {
-    const before = await installSource(src, true);
-    if (before) ok++;
-    else fail++;
+  // One lock for the whole update, not one per source: f up is fetch + reset
+  // --hard + clean across every bucket, and releasing between sources would let
+  // another process clone or copy into a bucket mid-sequence.
+  // The test hook exists so a test can demonstrate the corruption the lock
+  // prevents; it is an option, not an env var, so no user configuration can
+  // silently turn the lock off.
+  const release = opts.__noLockForTests ? () => {} : await acquireStoreLock();
+  try {
+    for (const src of sources) {
+      const changed = await installSource(src, true);
+      if (changed) ok++;
+      else fail++;
+    }
+  } finally {
+    release();
   }
 
-  console.error(`f: update complete — ${ok} ok, ${fail} failed\n`);
+  console.error(`f: update complete — ${ok} changed, ${fail} unchanged or failed\n`);
 }
 
 interface DirtyBucket {

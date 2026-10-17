@@ -574,8 +574,36 @@ export function repoProvenance(dir: string): Record<string, unknown> | null {
  * runs that died mid-clone -- so every `.pre-clone-*` sibling is swept, not just
  * the one made here.
  */
+/**
+ * Move a pre-existing (non-git) bucket aside so `git clone` can take the path,
+ * and return the paths to delete on success or restore on failure.
+ *
+ * An empty directory is **not** stashed — it is removed. That case is the
+ * common one: ensureGlobalConfig() + the default source create ~/.f/ucks/<repo>
+ * as an empty dir on a fresh machine, and git refuses to clone into a path that
+ * exists and is non-empty... except that it counts an empty dir as "exists", so
+ * renaming it aside and cloning worked only when *something else* had already
+ * claimed the stash name. Net effect: a first `f up` on a fresh store failed
+ * every git source with "destination path already exists", and the empty dir
+ * was left in place. git clones fine into a path that does not exist at all.
+ */
 function stashExisting(dir: string): string[] {
   if (!existsSync(dir)) return [];
+  // Empty (or listing failed): drop it, nothing of value to preserve.
+  let entries: string[] | null = null;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    entries = null;
+  }
+  if (entries && entries.length === 0) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return [];
+    } catch {
+      /* fall through and try the rename, which may still work */
+    }
+  }
   const stash = dir + ".pre-clone-" + Date.now().toString(36);
   try {
     renameSync(dir, stash);
@@ -648,10 +676,25 @@ function quote(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
 }
 
+/**
+ * The useful line from a failed command.
+ *
+ * NOT the first line: git writes progress first ("Cloning into '…'...") and the
+ * failure afterwards ("fatal: destination path … already exists"), so first-line
+ * reporting printed the harmless progress line and hid the actual reason — which
+ * is how a clone that failed on every source looked like a network problem.
+ * Prefer git's own error lines, then the last non-empty line.
+ */
 function firstLine(e: unknown): string {
   const msg =
     e instanceof Error ? ((e as { stderr?: unknown }).stderr?.toString?.() || e.message) : String(e);
-  return (msg ?? "").split("\n").find((l) => l.trim()) ?? String(e);
+  const lines = (msg ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return String(e);
+  const err = lines.find((l) => /^(fatal|error|warning|remote:)/i.test(l) || /already exists|not a git|denied|invalid/i.test(l));
+  return err ?? lines[lines.length - 1];
 }
 
 /**
@@ -734,12 +777,27 @@ function installUckDeps(uckDir: string): void {
 }
 
 /** Normalize a git-ish specifier into a clonable URL. */
+/**
+ * The URL to hand git, with our `#ref` suffix removed.
+ *
+ * The suffix is f's own convention (see sourceBucket / installGitSource, which
+ * split it off into --branch), and git's URL parser does not know that: passed
+ * verbatim it becomes part of the repo path, so
+ * `https://host/o/repo.git#main` is looked up as a repository literally named
+ * `repo.git#main` and every fetch/clone/refspec fails — against github it
+ * reports the generic "correct access rights" line (private repo or does not
+ * exist, per GitHub's own wording), which reads like a permissions problem and
+ * sent everyone looking at credentials. Shipped 0.3.0 cloned `url` unstripped,
+ * so **any** source with an explicit ref was uninstallable; it went unnoticed
+ * because the seeded default source carries no ref.
+ */
 function gitUrl(specifier: string): string {
-  if (specifier.startsWith("github:")) {
-    const parts = specifier.slice("github:".length).split("/");
+  const bare = specifier.replace(/\s*#.*$/, ""); // strip #ref (also trailing whitespace)
+  if (bare.startsWith("github:")) {
+    const parts = bare.slice("github:".length).split("/");
     return `https://github.com/${parts.slice(0, 2).join("/")}.git`;
   }
-  if (specifier.startsWith("git+")) return specifier.slice(4);
-  return specifier;
+  if (bare.startsWith("git+")) return bare.slice(4);
+  return bare;
 }
 

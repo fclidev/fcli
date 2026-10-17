@@ -18,8 +18,14 @@ export function normalizeSource(src: { source: string; ref?: string } | string):
 
 /** Classify a specifier: local path, git, or npm. */
 export function sourceKind(specifier: string): "local" | "git" | "npm" {
+  // git FIRST. installGitSource clones any URL git itself accepts, and that
+  // includes file:///…/repo.git — so file:// must be classified here, or it
+  // falls through to npm resolution: "f: file:///…: not in node_modules
+  // (run npm i file:///…)" for a git URL that git could clone happily. Same
+  // reason for the other local transports git understands.
+  if (/^(git\+|file):\/\//.test(specifier) || /^ssh:\/\//.test(specifier) || /^(https?|ftps?):\/\//.test(specifier)) return "git";
+  if (specifier.startsWith("github:") || specifier.startsWith("git@")) return "git";
   if (isAbsolute(specifier) || specifier.startsWith("./") || specifier.startsWith("../")) return "local";
-  if (/^(git\+)?(https?|ssh):\/\//.test(specifier) || specifier.startsWith("github:") || specifier.startsWith("git@")) return "git";
   return "npm";
 }
 
