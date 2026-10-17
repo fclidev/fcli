@@ -40,17 +40,32 @@ dist/        build output (gitignored)
 
 `.github/workflows/docs.yml` builds this directory and publishes `dist/` to the
 `gh-pages` branch; Pages serves that branch at the root of `fcli.dev`. A push to
-`main` touching `docs/**` builds and deploys; a PR builds and checks but does not
-deploy.
+`main` builds and deploys (the deploy job requires `main`, so a `workflow_dispatch`
+re-run must come from `main`); a PR builds and checks but does not deploy.
 
-The publishing source is a **branch**, not `main:/docs`. `build.js` emits
-root-absolute URLs (`/install/`, `/style-<hash>.css`) and bakes `SITE_ORIGIN`
-into every canonical tag, into `sitemap.xml` and into `llms.txt`. Published as a
-_project_ site under `kensand.github.io/fcli/`, all of those fall off the root
-and Pages returns a bare 404 for unknown paths — the `redirects:0` generator it
-does offer only ships for user/org sites. Publishing a branch at the domain root
-keeps `SITE_BASE` empty, so `build.js` and `check.js` need no base-path
-awareness at all.
+Two things about this branch are load-bearing:
+
+**`.nojekyll` must be in `dist/`.** Pages runs Jekyll over a branch publishing
+source unless that file is present, and Jekyll treats the already-built site as
+source input: it reads each page's frontmatter block as its own, re-renders
+`index.html`, rewrites the title from `docs/README.md` via `jekyll-seo-tag`, drops
+the pretty-URL page directories, replaces the content-hashed assets with theme CSS,
+and stops copying `llms.txt` through. `npm run serve` copies `dist/` verbatim, so
+none of that is visible locally — `npm run check` fails if the marker is missing.
+
+**The deploy job is restricted to `main`.** The `github-pages` environment uses a
+branch policy, so any other ref is rejected with "Branch X is not allowed to
+deploy to github-pages due to environment protection rules". Building `docs/**`
+on every push and gating only the deploy keeps that failure mode off feature
+branches while keeping the content-build trigger narrow.
+
+The publishing source is a **branch**, not `main:/docs`, because `build.js` emits
+root-absolute URLs (`/install/`, `/style-<hash>.css`) and bakes `SITE_ORIGIN` into
+every canonical tag, into `sitemap.xml` and into `llms.txt`. Under a non-root
+publish those all fall off the root. Publishing a branch at the domain root keeps
+`SITE_BASE` empty, so neither `build.js` nor `check.js` needs base-path awareness —
+`check.js` has none today and would report 11 false failures under
+`SITE_BASE=/fcli`.
 
 `CNAME` is tracked here and copied into `dist/`, which is where Pages reads the
 domain from. That keeps the domain in git rather than as an untracked file the UI
