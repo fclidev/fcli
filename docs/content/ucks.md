@@ -19,8 +19,11 @@ The `index.js` exports a `register(ctx)` function.
 ```js
 // index.js
 export function register(ctx) {
-  // ctx.fVersion — f's version
-  // ctx.self     — this uck's own name
+  // ctx.fVersion        — f's version, e.g. "0.3.1"
+  // ctx.contractVersion — the contract version this core implements (1)
+  // ctx.self            — this uck's own name
+  // ctx.ucks            — [{name, desc}] of every loaded uck
+  // ctx.registry        — name -> everything that uck returned
 
   return {
     name: "myuck", // the word after `f`
@@ -28,8 +31,7 @@ export function register(ctx) {
     run: (argv, args, runCtx) => {
       // args._ is the remaining CLI args
       // argv is the full argv
-      // runCtx.ucks     — [{name, desc}] of every loaded uck
-      // runCtx.registry — name -> everything that uck returned
+      // runCtx has the same five keys as ctx above — see "One ctx shape"
       process.stdout.write("hi\n");
     },
   };
@@ -44,12 +46,17 @@ export default { register };
 - Full Node.js runtime — `child_process`, `fs`, `http`, `import`, the network.
   No sandbox.
 
-### Two moments, two contexts
+### One ctx shape, two moments
 
-`register()` runs at **load** time, before the other ucks exist: it gets
-`fVersion` and `self`, and nothing about its neighbours. `run()` runs at
-**run** time, after everything is loaded, and gets the whole registry — so
-inter-uck calls belong in `run`, not in `register`:
+`register()` and `run()` receive the **same five keys**: `fVersion`,
+`contractVersion`, `self`, `ucks`, `registry`. Core builds both from one object
+shape, so they cannot drift apart. What differs is what is *in* them:
+
+- At **register** time `ucks`/`registry` are a **partial view** — only the ucks
+  that loaded before yours, and not your own name. Use it there for feature
+  detection (`"creds" in ctx.registry`), never for an authoritative peer lookup.
+- At **run** time the view is complete: `ucks` is the list `f help` prints and
+  `registry` holds every registered uck. Inter-uck calls belong in `run`.
 
 ```js
 export function register(_ctx) {
@@ -64,9 +71,25 @@ export function register(_ctx) {
 }
 ```
 
+`contractVersion` is an **interface** number, not a release number: `fVersion`
+(`"0.3.1"`) tells you which build of f is running, `contractVersion` (`1`) which
+contract it speaks. A uck written against contract 1 can branch on it at
+register time, before returning anything. It says nothing about a *peer's* release
+cadence — feature-detect `credsApi`, `configApi` or a credential provider on its
+own surface, not on this number.
+
+`ctx.registry` is the **only** peer accessor. `ctx.uck(name)` — 0.3.0's sugar over
+`registry[name]` — is deleted, with no deprecation cycle: the key is absent, so a
+uck still calling it fails loud (`ctx.uck is not a function`) instead of quietly
+falling back to a socket read that reports "no-store" as "not configured". The
+map is read-only by convention: registration happens through `register()`, never
+by mutating it.
+
 A uck may export anything else it wants — `configApi`, `credsApi`, `skills`,
 your own fields. Core ignores what it does not know; other ucks read it off
-`ctx.registry`.
+`ctx.registry`. One export is read straight off the **module**, not the registry:
+`credentialProvider`, which is how a uck becomes a credential provider — see
+[Credentials](/credentials/).
 
 ## The store
 

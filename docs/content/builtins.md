@@ -1,6 +1,6 @@
 ---
 title: Builtins
-summary: Every uck that ships with f — v, w, ls, config, creds, skills, uck — plus the core builtins help and up.
+summary: Every uck that ships with f — v, w, ls, config, creds, providers, skills, uck — plus the core builtins help and up.
 ---
 
 # Builtins
@@ -12,21 +12,22 @@ list; this page is the same thing with details.
 
 On first run `f` seeds `~/.f/f.config.json` with the
 [fcli-ucks](https://github.com/kensand/fcli-ucks) repo and clones it into the
-store. That repo is the builtins: seven ucks, one directory each.
+store. That repo is the builtins: eight ucks, one directory each.
 
 ```sh
 f help
 ```
 
 ```text
-f v0.2.2 — token-efficient CLI
+f v0.3.1 — token-efficient CLI
 
 usage: f <uck> [args]
 
 ucks:
   config  edit f.config.json via JSONPath (get/set/add/remove/list)
-  creds  store credentials (scrypt+AES-GCM, daemon+socket, ttl)
+  creds  store credentials (scrypt+AES-GCM, daemon+socket, ttl); falls back to credential providers on a miss
   ls  list files (terse, one per line)
+  providers  list credential providers registered with f creds
   skills  manage local skill entries (search/ls/show/add/rm) in f.config.json
   uck  push store ucks to a git repo (bucket name = target name)
   v  print f version
@@ -41,7 +42,7 @@ than ucks in the store — see [Core builtins](#core-builtins).
 ## v
 
 ```sh
-f v          # 0.2.2
+f v          # 0.3.1
 ```
 
 Prints f's own version — the version of the `f` binary, not of the ucks.
@@ -91,15 +92,17 @@ alongside `register`, and its methods take an explicit target (a path,
 Credentials encrypted at rest, held in memory by a daemon with a TTL.
 
 ```sh
-f creds unlock [passkey] [--ttl sec]   # start daemon (default ttl 600s)
-f creds status                         # locked / unlocked + time left
-f creds set prod.db "postgres://…"     # store
-f creds get prod.db                    # print (decrypts)
-f creds ls                             # list names
+f creds unlock [passkey] [--ttl <dur>] # start daemon (default 10m; s/m/h/d/w)
+f creds status                         # locked / unlocked + time left, + provider readiness
+f creds set prod.db "postgres://…"     # store (no value: stdin, or a no-echo prompt)
+f creds get prod.db --secrets          # print — redacted without --secrets
+f creds ls                             # list names (provider mirrors hidden)
 f creds rm prod.db                     # remove
+f creds forget [name…]                 # drop provider mirrors + the miss cache
 f creds request <name> [--timeout sec] # block until someone else sets it
 f creds waiters                        # open requests, from other terminals
 f creds fill [name]                    # prompt + set values for open waiters
+f creds files <sub>                    # whole files in the same box
 f creds lock                           # stop daemon, zeroize key
 ```
 
@@ -108,10 +111,48 @@ terminal blocks on a credential it does not have, and the human in another
 terminal sees the open request (`waiters`) and answers it (`fill`). See
 [Credentials](/credentials/).
 
+`--ttl` and `--timeout` take a plain number of seconds or a duration with
+`s`/`m`/`h`/`d`/`w` (`45m`, `2h`, `1d6h30m`).
+
 Other ucks reach the same store through the exported `credsApi` (`get` / `set`
 / `ls` / `unlock` / `lock` / `status` / `wait`) — which is how a uck like a
 Forgejo client can block on a token instead of failing when the token is
 missing.
+
+On a **local miss** `get` consults credential providers — see
+[providers](#providers) and [Credentials](/credentials/).
+
+## providers
+
+List the credential providers registered with `f creds`.
+
+```sh
+f providers            # providers, then their readiness
+f providers --dump     # the machine-readable discovery payload (--json is the same)
+```
+
+A **credential provider** is any uck that exports a `credentialProvider` object
+alongside `register()`. `f creds get` asks them on a local miss and mirrors a
+hit back into the encrypted store as `mirror:<name>`, so later reads are
+offline. With one provider installed:
+
+```text
+myprov    uck:myprov    mirrorTtl:3600s
+ok        1 provider(s)
+  myprov: ready — fake provider
+```
+
+With none — the state on a fresh install, since no default uck is a provider —
+the output is `(no credential providers — a uck exports 'credentialProvider')`
+and the exit code is still 0. `f creds status` prints the same readiness lines.
+
+Discovery imports every installed uck and reads the export; nothing
+provider-owned runs until a name is looked up. The interface — `resolve`, the
+optional `has` / `status` / `mirrorTtlSec`, and the rule that a provider
+**throws** rather than returns `null` when it is broken — is normative in
+section 5 of `CONTRACT.md` in the
+[fcli-ucks](https://github.com/kensand/fcli-ucks) repo. What `f creds` does with
+it is on [Credentials](/credentials/).
 
 ## skills
 
@@ -162,7 +203,7 @@ only routine run that touches the network — see [Update](/update/).
 
 ## Where they live
 
-The seven ucks above are ucks like any other: plain `index.js` files in a repo
+The eight ucks above are ucks like any other: plain `index.js` files in a repo
 you could fork, not code compiled into the binary. What makes them builtin is
 that they arrive automatically — the first install seeds that repo into the
 global config. Adding your own ucks is the same mechanism pointed at a

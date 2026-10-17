@@ -44,7 +44,7 @@ npm unlink -g f
 
 On first run, `f` seeds `~/.f/f.config.json` with the
 [fcli-ucks](https://github.com/kensand/fcli-ucks) repo as its only source,
-clones that repo into `~/.f/ucks/fcli-ucks/`, and registers the seven ucks
+clones that repo into `~/.f/ucks/fcli-ucks/`, and registers the eight ucks
 inside it. Override the default source with the `F_UCKS_REPO` environment
 variable before the first run. See [Builtins](/builtins/) for what you get and
 [Config](/config/) for the full picture.
