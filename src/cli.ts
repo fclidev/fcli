@@ -94,6 +94,11 @@ export async function run(argv: string[]): Promise<void> {
     return;
   }
 
+  if (name === "--version" || name === "-V") {
+    console.log(fVersion);
+    return;
+  }
+
   if (name === "up") {
     // --force discards dirty git buckets after one confirmation; without it
     // dirty buckets are skipped and preserved (see updateAll).

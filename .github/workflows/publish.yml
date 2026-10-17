@@ -70,7 +70,7 @@ jobs:
         run: |
           test -f dist/index.js || \
             { echo "dist/index.js missing after build"; exit 1; }
-          node dist/index.js v
+          node dist/index.js --version
 
       # No NODE_AUTH_TOKEN: npm uses the GHA OIDC token (from id-token: write)
       # and authorizes it against the trusted publisher registered for this
