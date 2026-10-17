@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="0" fill="#14171a"/>
+  <g transform="translate(51.200,441.536) scale(2.249121)">
+    <rect width="64" height="64" rx="12" fill="#14171a"/>
+  <text x="32" y="45" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="40" font-weight="700" fill="#58c9a0" text-anchor="middle">f</text>
+    </g>
+  <text x="238.33" y="539.42" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="194.32"
+      font-weight="700" fill="#58c9a0" letter-spacing="-3.89">f</text><text x="349.58" y="539.42" font-family="ui-sans-serif, -apple-system, &quot;Segoe UI&quot;, Roboto, system-ui, sans-serif" font-size="194.32"
+      font-weight="600" fill="#e6e8ea" letter-spacing="-3.89">cli</text>
+  <text x="51.20" y="634.42" font-family="ui-sans-serif, -apple-system, &quot;Segoe UI&quot;, Roboto, system-ui, sans-serif"
+    font-size="71.97" fill="#8b939c">token-efficient CLI for LLMs</text>
+</svg>

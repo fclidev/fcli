@@ -1,0 +1,29 @@
+# Checksums of the committed thumbnails, so a regeneration can be
+# recognised as byte-identical or not. Regenerate with ./make.sh, then:
+#   (cd thumbs && sha256sum *.png *.svg > ../SHA256SUMS.new)
+#
+# Produced by:
+#   chromium 154.0.8037.97 Arch Linux
+#   python   Python 3.14.8 / pillow 12.3.0
+# Byte-identity across Chromium versions is NOT expected -- the font stack
+# resolves differently per renderer (see README). A diff here after an
+# upgrade is normal; check_glyph.py is the real gate.
+
+e2d0687032893c89adc46dd895cb6dd721af597e7f7a62faf8e4e24fab24effa  fcli-wordmark-gh-1280x640.png
+8f9043248e346de2f8323b42318c981c5d4ab53c25fcd15348c8465c60124b9e  fcli-wordmark-og-1200x630.png
+f0b784dfd560646bd2198bf373541b609c4b470d40383dddd3cdc302913ec266  fcli-wordmark-square-1024.png
+064d37fe1b89e6cff8264925cbc9904ce15854bc2ed7e165b019900ebcb6347d  f-terminal-gh-1280x640.png
+d668c8d3073f8beaf511d39eb1701bf246fdca13fa985e1d32dd955c72c9f36e  f-terminal-og-1200x630.png
+c12f05718eb69c3b2c70c17e48d1710f004a3b05c04f2cf2a8c15ed027a7efa9  f-terminal-square-1024.png
+58cf3dea282293c44fbc0d4f038d2f2d055e24f6adad981a10c5165630e61cf4  f-tile-gh-1280x640.png
+596a9cedf97c2037a8c100a5ddce5d4832fbc7b9d560aa602fdf29a8665f7b61  f-tile-og-1200x630.png
+e6cdf9e0b018214f0ef7b35bca88c52750b65a57d0293d5cc39365b23da41df8  f-tile-square-1024.png
+66ec01642fd6c0a35d863b8b4d8f4a04a63319f436cbddfdc4d36acaa026b70a  fcli-wordmark-gh-1280x640.svg
+a2de03f049c7b5ccecb11b16f0afdcd4ba5016c6ebc06fbb30b574a62b8d8083  fcli-wordmark-og-1200x630.svg
+3f41c381b6c6119526de67bfcad005c1d5a3569dde0d4a1b0f85865d26f3f097  fcli-wordmark-square-1024.svg
+0075fb4d3fcf80073a7b3d6da18f6c33a79048fdcf74a1b8982899b990650d6d  f-terminal-gh-1280x640.svg
+dd58d854e1e1acec17acdd11aa40dec1602d160bc14180adcd235c946d5ce3a4  f-terminal-og-1200x630.svg
+500a3203a8f8e4e64abc93555bfe7e3a0d34c06751aa71beee0859045f998bfd  f-terminal-square-1024.svg
+e97bee644265a07768b7ebbc2062fd74f8eaac4c8181b2e747f1593967230b0b  f-tile-gh-1280x640.svg
+e81fae1810f4f2d661cb40b4d3b154e86d22ab171fc70b3e17184eac005160ac  f-tile-og-1200x630.svg
+a1c699ae86fbd48ebeda6a81c732200e99772986420a6252f5ce5b0c459613f4  f-tile-square-1024.svg

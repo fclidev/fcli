@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" rx="0" fill="#14171a"/>
+  <g transform="translate(390.500,70.500) scale(7.796875)">
+    <rect width="64" height="64" rx="12" fill="#14171a"/>
+  <text x="32" y="45" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="40" font-weight="700" fill="#58c9a0" text-anchor="middle">f</text>
+    </g>
+</svg>

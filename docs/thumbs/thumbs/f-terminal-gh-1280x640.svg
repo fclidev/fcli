@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" rx="0" fill="#14171a"/>
+  <rect x="57.6" y="57.6" width="1164.8" height="524.8" rx="12" fill="#0d1013" stroke="#2a2f35" stroke-width="1"/>
+    <path d="M57.6 69.6 a12 12 0 0 1 12 -12 h1140.8 a12 12 0 0 1 12 12 v39.2 h-1164.8 z" fill="#1a1e22"/>
+    <path d="M58.1 108.3 h1163.8" stroke="#2a2f35" stroke-width="1"/>
+    <circle cx="80.6" cy="83.2" r="4.6" fill="#2a2f35"/><circle cx="102.4" cy="83.2" r="4.6" fill="#2a2f35"/><circle cx="124.1" cy="83.2" r="4.6" fill="#2a2f35"/>
+    ('<text x="154.84" y="91.38" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="23.54"\n      font-weight="700" fill="#58c9a0" letter-spacing="-0.47">f</text><text x="168.32" y="91.38" font-family="ui-sans-serif, -apple-system, &quot;Segoe UI&quot;, Roboto, system-ui, sans-serif" font-size="23.54"\n      font-weight="600" fill="#e6e8ea" letter-spacing="-0.47">cli</text>', 36.433390710715585)
+    <text x="80.6" y="152.4" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#dfe3e6">$ f help</text>
+    <text x="80.6" y="192.1" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#7d858d">f — token-efficient CLI for LLMs</text>
+    <text x="80.6" y="253.6" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" font-weight="700" fill="#58c9a0">ucks</text>
+    <text x="80.6" y="293.2" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#7d858d">  creds    help     ucks</text>
+    <text x="80.6" y="332.9" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#7d858d">  skills   config   up</text>
+    <text x="80.6" y="394.4" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" font-weight="700" fill="#58c9a0">skills</text>
+    <text x="80.6" y="434.0" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#7d858d">  f        f-creds   f-j   f-gh</text>
+    <text x="80.6" y="473.7" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#7d858d">  f-ha     f-mqtt   f-ssh</text>
+    <text x="80.6" y="535.2" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#8b939c">14 ucks · 14 skills · f help <uck></text>
+    <text x="80.6" y="574.9" font-family="ui-monospace, &quot;SF Mono&quot;, &quot;JetBrains Mono&quot;, Menlo, Consolas, monospace" font-size="25.6" fill="#dfe3e6">$</text>
+</svg>

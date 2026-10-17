@@ -1,8 +1,7 @@
 node_modules
 dist
 *.tsbuildinfo
-# generated thumbnails and scratch from the render/measure probes
-docs/thumbs/thumbs/
+# Render probes and scratch from generate.py/check_glyph.py; NOT the output.
 docs/thumbs/_*.png
 docs/thumbs/_*.html
 docs/thumbs/_*.svg

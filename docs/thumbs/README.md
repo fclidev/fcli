@@ -34,8 +34,10 @@ python3 check_glyph.py thumbs        # every tile vs the site favicon, same size
 python3 check_glyph_negative.py      # proves that check can actually fail
 ```
 
-The PNGs are deliberately gitignored, because they are renderer-specific (see
-below). Commit them if you want stable bytes on the hub, or regenerate at release.
+The rendered PNGs **are** committed, so the social cards are visible on GitHub
+without running anything. They are renderer-specific (see below): treat `make.sh`
+as the way to refresh them, and regenerate on any machine whose Chromium differs
+from the one recorded in `SHA256SUMS`.
 
 ## Why Chromium and not librsvg or Inkscape
 
@@ -123,4 +125,5 @@ From `style.css`, dark scheme: tile `#14171a` (`--bg`/`--code-bg`), glyph
 | `render_all.sh` | SVG → PNG via headless Chromium |
 | `check_glyph.py` | glyph A/B against `../assets/favicon.svg` |
 | `check_glyph_negative.py` | negative control on that check |
-| `thumbs/` | output (gitignored) |
+| `thumbs/` | output — committed, 9 SVG + 9 PNG |
+| `SHA256SUMS` | checksums of the committed output, with the Chromium build that produced them |
