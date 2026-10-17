@@ -20,8 +20,8 @@ short arguments, no colors, no "Done!".
 ## The default ucks
 
 On first run `f` seeds its config with the
-[fcli-ucks](https://github.com/kensand/fcli-ucks) repo and clones it into the
-store. The defaults are:
+[`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package
+and installs it into the store. The defaults are:
 
 | Uck           | Description                                         |
 | ------------- | --------------------------------------------------- |

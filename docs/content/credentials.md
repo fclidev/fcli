@@ -149,7 +149,7 @@ On a fresh install there are none — no default uck is a provider — and the
 output says so with exit code 0.
 
 The interface, normative in section 5 of `CONTRACT.md` in the
-[fcli-ucks](https://github.com/kensand/fcli-ucks) repo:
+[fcli-ucks](https://github.com/fclidev/fcli-ucks) repo:
 
 ```js
 credentialProvider: {
@@ -222,8 +222,8 @@ password. Rather than fail, the uck blocks:
 Terminal A — a uck (or you) needs a cred it does not have:
 
 ```sh
-f creds get forgejo.kensand.net      # not set yet
-f creds request forgejo.kensand.net  # blocks until someone sets it (default 300s)
+f creds get my.forge.example.com      # not set yet
+f creds request my.forge.example.com  # blocks until someone sets it (default 300s)
 ```
 
 Terminal B — the human, seeing what is outstanding:
@@ -246,7 +246,7 @@ visible from another terminal.
 
 ## Where these rules come from
 
-`CONTRACT.md` in the [fcli-ucks](https://github.com/kensand/fcli-ucks) repo,
+`CONTRACT.md` in the [fcli-ucks](https://github.com/fclidev/fcli-ucks) repo,
 section 5, is the **normative** text for the provider interface;
 `creds/README.md` in the same repo is the operational doc that mirrors it. Where
 they disagree this page follows CONTRACT.md and the built binary — and they do

@@ -65,7 +65,7 @@ export function register(_ctx) {
     desc: "borrow a token",
     run: (_argv, _args, ctx) => {
       const creds = ctx.registry.creds?.credsApi;
-      if (creds) creds.get("forgejo.kensand.net").then(process.stdout.write);
+      if (creds) creds.get("my.forge.example.com").then(process.stdout.write);
     },
   };
 }

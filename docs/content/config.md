@@ -16,7 +16,7 @@ Two levels are merged:
 ```json
 {
   "ucks": [
-    "https://github.com/kensand/fcli-ucks.git",
+    "@fcli.dev/ucks",
     "./my-local-uck",
     { "source": "github:user/repo", "ref": "main" }
   ],
@@ -32,14 +32,17 @@ ucks to use — the config is a shared JSON document, not a fixed schema.
 
 A source can be:
 
+- **An npm package** — `@scope/name` (optionally `@scope/name#<version>` to
+  pin). `f` downloads the tarball with `npm pack` and installs it as a store
+  bucket; the package's `dist/` uck directories are loaded directly, so no
+  surrounding `npm i` is needed. The seeded default (`@fcli.dev/ucks`) is this.
 - **A repo** — a git URL (`https://`, `ssh://`, `git+https://`), `github:user/repo`
-  or `git@host:user/repo`. It expands to every uck directory inside it, at any
-  depth.
+  or `git@host:user/repo`. It is cloned into the store and expands to every uck
+  directory inside it, at any depth.
 - **A local path** — `./my-uck` or `/abs/path`: one uck, or a directory of
   them.
-- **An npm package** — `@scope/name`, resolved from `node_modules` at load
-  (run `npm i` first).
 - **An object** — `{ "source": "…", "ref": "branch", "name": "bucket" }`.
+  `ref` is a git branch/tag (git sources only); `name` forces the bucket name.
 
 Object fields:
 

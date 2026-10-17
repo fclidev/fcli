@@ -154,8 +154,9 @@ bucket being a working tree rather than a content dump:
 
 - **this repo** (`@fcli.dev/f`) — the core, published to npm.
 - **`fcli-ucks`** (github.com/fclidev/fcli-ucks) — the *default* ucks (v, w,
-  ls, config, creds, uck). `DEFAULTS_REPO` in `src/config.ts` points here and
-  is seeded into the global config on first install.
+  ls, config, creds, uck, skills, providers), published as the
+  `@fcli.dev/ucks` npm package. `DEFAULTS_REPO` in `src/config.ts` points at
+  the package and is seeded into the global config on first install.
 - **`kensand-fcli-ucks`** (forgejo.kensand.net/kensand.net/kensand-fcli-ucks)
   — *personal* ucks. Wired as both a config source (pull) and a `uck` push
   target in the operator's `~/.f`.
@@ -168,7 +169,7 @@ Default ucks are **not** in this repo. To change a default uck, edit it in
 - Publishes to npm via **GitHub Actions trusted publishing (OIDC)** on a `v*`
   tag — see `.github/workflows/publish.yml`. No `NPM_TOKEN`; auth is the GHA
   OIDC token against a trusted publisher registered on npm for
-  owner `kensand` / repo `fcli` / environment `npm`.
+  owner `fclidev` / repo `fcli` / environment `npm`.
 - **The tag must equal `package.json` `version`** — the workflow enforces this
   and fails otherwise. To release: bump `version`, commit, `git tag v<ver>`,
   push the tag.

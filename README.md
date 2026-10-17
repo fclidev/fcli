@@ -42,7 +42,12 @@ f <uck> [args]
 | `f up` | full update: re-fetch all configured uck sources |
 | `f help` | list all ucks |
 
-`v`, `w`, and `ls` are **default ucks** — they ship in the [`fcli-ucks`](https://github.com/fclidev/fcli-ucks) repo. On first install f seeds `~/.f/f.config.json` with that repo as a source, then downloads it into the store. Override the source with `F_UCKS_REPO`.
+`v`, `w`, and `ls` are **default ucks** — they ship in the
+[`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package
+(the published build of the [fcli-ucks](https://github.com/fclidev/fcli-ucks)
+repo). On first install f seeds `~/.f/f.config.json` with that package as a
+source, then installs it into the store. Override the source with
+`F_UCKS_REPO` (a git URL still works — the clone flow is unchanged).
 
 `up` and `help` are core builtins (special-cased in `cli.ts`): `help` is the no-arg behavior, `up` is a maintenance operation on f itself. `up` re-fetches every source in your config (global + project), overwriting the store so ucks pick up upstream changes.
 
@@ -113,7 +118,7 @@ Every uck f knows about lives under **`~/.f/ucks/<bucket>/`**. `<bucket>` is the
 ```json
 {
   "ucks": [
-    "https://github.com/fclidev/fcli-ucks.git",
+    "@fcli.dev/ucks",
     "./my-local-uck",
     { "source": "github:user/repo", "ref": "main" }
   ]

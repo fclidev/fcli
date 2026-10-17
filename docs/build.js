@@ -25,7 +25,7 @@ const SITE =
   // normal state of a pre-launch site. docs/deploy.md lists what has to land.
   process.env.SITE_ORIGIN || "https://fcli.dev";
 // Where the source lives, for the sidebar's source link.
-const REPO = process.env.SITE_REPO || "https://github.com/kensand/fcli";
+const REPO = process.env.SITE_REPO || "https://github.com/fclidev/fcli";
 const BASE = process.env.SITE_BASE || "";
 
 const md = new MarkdownIt({

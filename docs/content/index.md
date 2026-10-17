@@ -60,5 +60,5 @@ f
 - [Extend](/extend/) — extensions as npm packages.
 - [Update](/update/) — `f up`, pushing ucks to a repo.
 
-Source: [github.com/kensand/fcli](https://github.com/kensand/fcli) ·
-Default ucks: [github.com/kensand/fcli-ucks](https://github.com/kensand/fcli-ucks)
+Source: [github.com/fclidev/fcli](https://github.com/fclidev/fcli) ·
+Default ucks: [github.com/fclidev/fcli-ucks](https://github.com/fclidev/fcli-ucks)

@@ -11,8 +11,10 @@ list; this page is the same thing with details.
 ## First run
 
 On first run `f` seeds `~/.f/f.config.json` with the
-[fcli-ucks](https://github.com/kensand/fcli-ucks) repo and clones it into the
-store. That repo is the builtins: eight ucks, one directory each.
+[`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package
+and installs it into the store. That package is the builtins: the published
+build of the [fcli-ucks](https://github.com/fclidev/fcli-ucks) repo, one
+directory per uck.
 
 ```sh
 f help
@@ -151,7 +153,7 @@ provider-owned runs until a name is looked up. The interface — `resolve`, the
 optional `has` / `status` / `mirrorTtlSec`, and the rule that a provider
 **throws** rather than returns `null` when it is broken — is normative in
 section 5 of `CONTRACT.md` in the
-[fcli-ucks](https://github.com/kensand/fcli-ucks) repo. What `f creds` does with
+[fcli-ucks](https://github.com/fclidev/fcli-ucks) repo. What `f creds` does with
 it is on [Credentials](/credentials/).
 
 ## skills

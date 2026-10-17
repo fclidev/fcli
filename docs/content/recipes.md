@@ -10,7 +10,7 @@ agent debugging a red Forgejo Actions run on a monorepo.
 
 ## Background
 
-The [`f fj` uck](https://forgejo.kensand.net/kensand.net/kensand-fcli-ucks/tree/main/fj)
+The [`f fj` uck](https://github.com/fclidev/fcli-ucks/tree/main/fj)
 existed before any of this. It wraps the
 [@llamaduck/forgejo-ts](https://www.npmjs.com/package/@llamaduck/forgejo-ts)
 SDK — all 491 generated REST endpoints, exposed by name
@@ -43,7 +43,7 @@ gone. So the uck's own `ls` help text said it plainly:
 endpoint, and the web UI each carry a different identifier for one run:
 
 ```sh
-f fj call listActionRuns ownerName=kensand.net repoName=nucleotide limit=5
+f fj call listActionRuns ownerName=myorg repoName=myrepo limit=5
 # rows carry .id — 3767
 
 f fj call listActionTasks …
@@ -60,7 +60,7 @@ had used the `run_number` from the URL it was staring at.
 binary on the way out:
 
 ```sh
-f fj GET /repos/kensand.net/nucleotide/actions/runs/3767/logs > /tmp/logs.bin
+f fj GET /repos/myorg/myrepo/actions/runs/3767/logs > /tmp/logs.bin
 # PK..-J-...[binary re-encoded as text]
 ```
 
@@ -71,7 +71,7 @@ So the workaround was a Python subprocess that captured raw bytes around
 ```python
 import subprocess, zipfile
 raw = subprocess.run(
-    ["f", "fj", "GET", "/repos/kensand.net/nucleotide/actions/runs/3767/logs"],
+    ["f", "fj", "GET", "/repos/myorg/myrepo/actions/runs/3767/logs"],
     capture_output=True,
 ).stdout
 open("/tmp/logs.zip", "wb").write(raw)
@@ -98,9 +98,8 @@ small edit to the uck that already owned Forgejo auth, base-URL
 resolution, and error reporting. That is the contract paying off:
 `f fj` is a directory with an `index.js`
 ([the uck contract](/ucks/)), so extending it means editing a file —
-no new package, no new config, no deployment. The change landed as
-[commit 7e404dd](https://forgejo.kensand.net/kensand.net/kensand-fcli-ucks/commit/7e404dd032288d4b2030b4e7df41eba62e37d6a0)
-and published with `f uck push fj`:
+no new package, no new config, no deployment. The change landed in
+fcli-ucks and was published with `f uck push fj`:
 
 - **`f fj runs [newest|<run_id>]`** — list recent runs as
   `<id>  status  event  sha  ref  duration`, or show one run plus its
@@ -121,8 +120,7 @@ output format. Everything the LLM had to solve around the uck —
 authentication, which instance, error messages that say what is wrong —
 was already solved _inside_ it.
 
-One follow-up commit the same day
-([d2c3dcc](https://forgejo.kensand.net/kensand.net/kensand-fcli-ucks/commit/d2c3dcc2135607d8367d362cda231bad4cacb626)):
+One follow-up commit the same day:
 `runs` tolerates a truncated consumer (`| head -3`) instead of dying with
 an `EPIPE` stack — the kind of edge a two-hour session immediately
 exercises.
@@ -226,6 +224,6 @@ f fj runs newest && f fj joblogs 3774 "--- FAIL"
 - **Repo** — `runs`/`joblogs` default to the git origin of the current
   directory; `--repo owner/name` points elsewhere.
 - **Extending it further** — the words live in
-  [kensand-fcli-ucks](https://forgejo.kensand.net/kensand.net/kensand-fcli-ucks)
-  under `fj/`; it is one `index.js`. If your instance's Actions surface
-  differs, edit the file and `f uck push fj`.
+  [fcli-ucks](https://github.com/fclidev/fcli-ucks) under `fj/`; it is one
+  `index.js`. If your instance's Actions surface differs, edit the file and
+  `f uck push fj`.
