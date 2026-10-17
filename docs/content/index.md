@@ -71,18 +71,26 @@ f creds get prod.db
 Token cost is measured with `js-tiktoken` under `o200k_base` and `cl100k_base`,
 which agree on every figure below.
 
-| Cost                                  | Tokens              | When it is paid             |
-| ------------------------------------- | ------------------- | --------------------------- |
-| `f creds get prod.db`                 | 5                   | on invocation               |
-| One MCP tool definition               | ~80                 | on every request            |
-| `f help`, first run (8 commands)      | 161                 | once per session            |
-| A 20-command `f help` listing         | ~600                | once per session            |
-| An MCP server with 20 tool definitions| ~1,600              | on every request            |
+| Cost                             | Tokens           | When it is paid  |
+| -------------------------------- | ---------------- | ---------------- |
+| `f creds get prod.db`            | 5                | on invocation    |
+| `f help`, first run (8 commands) | 161              | once per session |
 
-The two per-unit rows are the load-bearing ones. An MCP definition is paid on
-every request whether or not the model calls it; `f help` is paid once and then
-leaves the context. Multiplying those per-unit figures gives the last two rows;
-the exact totals move with description length, so treat them as indicative.
+Both counted locally with `js-tiktoken`; the two encoders agree.
+
+The comparison worth making is not a token count but a payment schedule: an MCP
+tool definition sits in the context of every request whether or not the model
+calls it, and `f help` is fetched once. Absolute sizes depend on description
+length, so they are not stated here as a single number.
+
+For scale, measured elsewhere (neither count produced here; both used the same
+`o200k_base` encoder): real MCP servers average roughly **140–730 tokens per
+tool definition** — GitHub 138, Playwright 152, Kubernetes 222, Notion 726 —
+across a 18-server sample of 256 tools and 77,877 tokens. A separate benchmark
+of verbose production schemas measured 466 tokens per tool, and reports that a
+72-tool surface costs ~33,700 tokens, 16.9% of a 200k window, before the first
+user message. Sources: [tooltax](https://github.com/duskel/tooltax) and
+[mcp-turnstile](https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md).
 
 ## Why a CLI and not MCP
 

@@ -11,18 +11,22 @@
 
 `f` is a single executable on `PATH`. An agent learns its commands by running
 `f`, not from a declared tool schema, so nothing is paid until a command is
-invoked. An MCP tool definition costs ~80 tokens on *every* request whether the
-model calls it or not; `f help` lists every installed command once per session.
+invoked. An MCP tool definition sits in the context of *every* request whether
+the model calls it or not; `f help` is fetched once per session.
 
-Measured with `js-tiktoken` under `o200k_base` and `cl100k_base`, which agree on
-every figure:
+Measured locally with `js-tiktoken` (`o200k_base` and `cl100k_base` agree):
 
 ```
-f creds get prod.db            →      5 tokens, on invocation
-f help, first run (8 commands) →    161 tokens, once
-f help, 20 commands            →   ~600 tokens, once
-20 MCP tool definitions        → ~1,600 tokens, every request
+f creds get prod.db            →    5 tokens, on invocation
+f help, first run (8 commands) →  161 tokens, once per session
 ```
+
+For MCP-side scale — measured elsewhere, not here, same encoder — production
+servers average roughly **140–730 tokens per tool definition**: GitHub 138,
+Playwright 152, Kubernetes 222, Notion 726. See
+[tooltax](https://github.com/duskel/tooltax) for the 18-server sample.
+Absolute numbers depend on how verbosely a server writes its descriptions, so
+they are not reduced to one multiplier here.
 
 A uck (f's word for a command) is a directory with an `index.js` that exports
 `register(ctx)`, so extending `f` is editing a file. Output is plain text: no

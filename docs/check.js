@@ -71,8 +71,15 @@ function checkLinks() {
       }
     }
     for (const m of html.matchAll(/<a href="([^"]*)"[^>]*>/g)) {
-      if (m[1].includes(".md"))
-        fail(`${url}: an .md link survived the build (${m[1]})`);
+      const href = m[1];
+      // Unconverted sibling links are the risk; authored .md paths are how the
+      // content writes them. Scoped away from absolute http URLs so a legitimate
+      // external link that happens to name a .md file (a GitHub blob path) is not
+      // a failure. Relative links are already rejected by the branch above, and
+      // no internal page URL contains .md — the sitemap confirms it — so the
+      // narrower test cannot hide a real one.
+      if (href.startsWith(SITE) && href.includes(".md"))
+        fail(`${url}: an .md link survived the build (${href})`);
     }
     if (/\{#[a-z0-9-]+\}/.test(html))
       fail(`${url}: heading marker leaked into output`);
