@@ -26,6 +26,23 @@ const SITE =
   process.env.SITE_ORIGIN || "https://fcli.dev";
 // Where the source lives, for the sidebar's source link.
 const REPO = process.env.SITE_REPO || "https://github.com/fclidev/fcli";
+const UCKS_REPO = "https://github.com/fclidev/fcli-ucks";
+const NPM_PKG = "@fcli.dev/f";
+
+/* Sidebar link block. Each URL was checked against the live endpoint before it
+   was listed — a link that 404s is worse than no link. */
+const SIDEBAR_LINKS = [
+  { label: "npm", href: `https://www.npmjs.com/package/${NPM_PKG}` },
+  { label: "source", href: REPO },
+  { label: "default ucks", href: UCKS_REPO },
+  { label: "issues", href: `${REPO}/issues` },
+];
+/* Social card, 1200x630. Copy it from the canonical render — do not hand-generate
+   a separate one, or the two drift and nobody notices:
+     cp docs/thumbs/thumbs/fcli-wordmark-og-1200x630.png docs/assets/og.png
+   docs/thumbs/ holds the tracked source of truth (see its README); writeAssets()
+   hashes this copy, so the og:image URL is computed, never hand-written. */
+const OG_IMAGE_FILE = "og.png";
 const BASE = process.env.SITE_BASE || "";
 
 const md = new MarkdownIt({
@@ -208,7 +225,9 @@ function navHtml(currentUrl) {
 <a class="brand" href="${BASE}/"><b>f</b>cli</a>
 <p class="tagline">token-efficient CLI for LLMs</p>
 ${sections}
-<p class="repo"><a href="${REPO}">source ↗</a></p>
+<div class="repo">${SIDEBAR_LINKS.map(
+    (l) => `<a href="${l.href}">${l.label} ↗</a>`,
+  ).join("")}</div>
 </nav>`;
 }
 
@@ -247,8 +266,17 @@ function extractHero(raw) {
 }
 
 function layout(opts) {
-  const { title, summary, hero, home, body, currentUrl, headings, assets } =
-    opts;
+  const {
+    title,
+    summary,
+    hero,
+    home,
+    body,
+    currentUrl,
+    headings,
+    assets,
+    ogImage,
+  } = opts;
   const toc = headings
     .filter((h) => h.level === 2)
     .map((h) => `<a href="#${h.id}">${h.text}</a>`)
@@ -266,7 +294,17 @@ function layout(opts) {
 <meta name="description" content="${escapeAttr(summary)}">
 <meta property="og:title" content="${escapeAttr(title)}">
 <meta property="og:description" content="${escapeAttr(summary)}">
-<link rel="canonical" href="${SITE}${currentUrl}">
+${
+  ogImage
+    ? `<meta property="og:image" content="${escapeAttr(ogImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${escapeAttr(ogImage)}">
+`
+    : `<meta name="twitter:card" content="summary">
+`
+}<link rel="canonical" href="${SITE}${currentUrl}">
 <link rel="icon" href="${assets["favicon.svg"]}" type="image/svg+xml">
 <link rel="stylesheet" href="${assets["style.css"]}">
 <link rel="stylesheet" href="${assets["hljs.css"]}">
@@ -321,6 +359,11 @@ function build() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
   const assets = writeAssets();
+  const ogImage = assets[OG_IMAGE_FILE] || "";
+  if (!ogImage)
+    console.warn(
+      `warn: no ${OG_IMAGE_FILE} in assets/ — pages ship without og:image, so shared links render blank`,
+    );
 
   // GitHub Pages runs Jekyll over the published tree unless this file exists.
   // dist/ IS the build output, so a second build over it is destructive: Jekyll
@@ -365,6 +408,7 @@ function build() {
         currentUrl,
         headings,
         assets,
+        ogImage: ogImage ? `${SITE}${ogImage}` : "",
       }),
     );
     // llms.txt and search.json must not carry the hero's markup: the hero is

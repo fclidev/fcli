@@ -11,6 +11,8 @@ const path = require("path");
 const ROOT = __dirname;
 const DIST = path.join(ROOT, "dist");
 const CONTENT = path.join(ROOT, "content");
+// Must match build.js: og:image is emitted as an absolute URL under this origin.
+const SITE = process.env.SITE_ORIGIN || "https://fcli.dev";
 
 const problems = [];
 const fail = (msg) => problems.push(msg);
@@ -87,6 +89,18 @@ function checkLinks() {
       fail(`${url}: empty meta description`);
     if (!/<meta property="og:description" content="[^"]+"/.test(html))
       fail(`${url}: empty og:description`);
+    // og:image is not an <a href>, so the link walk above never sees it. A card
+    // pointing at a file that is not in dist/ renders as a blank share with no
+    // error anywhere — so resolve it here, against the same absolute URL a
+    // crawler will request.
+    const ogImg = html.match(/<meta property="og:image" content="([^"]+)"/);
+    if (ogImg) {
+      const abs = ogImg[1];
+      if (!abs.startsWith(SITE + "/"))
+        fail(`${url}: og:image is not an absolute ${SITE} URL — ${abs}`);
+      else if (!fs.existsSync(path.join(DIST, abs.slice(SITE.length))))
+        fail(`${url}: og:image not in dist/ — ${abs}`);
+    }
   }
 }
 

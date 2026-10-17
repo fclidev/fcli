@@ -161,11 +161,22 @@ body:not(.has-toc) > aside {
   font-weight: 600;
 }
 .repo {
+  /* Flex rather than inline flow: at the 264px sidebar an inline list wraps the
+     last link onto its own row and strands the separator punctuation with it.
+     Measured — inline flow put four links on rows [39,39,39,63]; flex keeps them
+     on one row and still does not overflow when the sidebar narrows. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.5rem;
   margin-top: 2.5rem;
   font-size: 0.8rem;
+  line-height: 1.6;
 }
 .repo a {
   color: var(--ink-faint);
+}
+.repo a:hover {
+  color: var(--accent);
 }
 
 /* ------------------------------------------------------------------- main */

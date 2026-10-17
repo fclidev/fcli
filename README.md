@@ -1,5 +1,12 @@
 # f
 
+[![npm version](https://img.shields.io/npm/v/@fcli.dev/f)](https://www.npmjs.com/package/@fcli.dev/f)
+[![downloads](https://img.shields.io/npm/dm/@fcli.dev/f)](https://www.npmjs.com/package/@fcli.dev/f)
+[![unpacked size](https://img.shields.io/npm/unpacked-size/@fcli.dev/f)](https://www.npmjs.com/package/@fcli.dev/f)
+[![node](https://img.shields.io/node/v/@fcli.dev/f)](#install)
+[![build](https://img.shields.io/github/actions/workflow/status/fclidev/fcli/docs.yml?event=push)](https://github.com/fclidev/fcli/actions/workflows/docs.yml)
+[![license](https://img.shields.io/github/license/fclidev/fcli)](LICENSE)
+
 **Stop paying token tax for every tool call.**
 
 *A [home for all the ucks you don't give](https://fcli.dev/ucks/).*
