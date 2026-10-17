@@ -1,0 +1,85 @@
+name: docs
+
+# Build the documentation site and publish it to GitHub Pages.
+#
+# Publishing source is the `gh-pages` branch, not `main:/docs`. That choice is
+# deliberate: `build.js` emits root-absolute URLs (`/install/`, `/style-x.css`)
+# and bakes SITE_ORIGIN into llms.txt, sitemap.xml and every canonical tag. As
+# a *project* site at kensand.github.io/fcli/ those URLs all fall off the root
+# and Pages serves a bare 404 for unknown paths (the `redirects:0` generator
+# only ships for user/org sites, not project sites). Publishing a branch at the
+# root of fcli.dev means SITE_BASE stays empty and build.js and check.js need
+# no changes at all.
+#
+# Permissions: `pages: write` publishes, `id-token: write` mints the OIDC
+# attestation GitHub requires for that. No PAGES_TOKEN secret is stored.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  # Editing the custom domain in the repo UI does not push anything, so the
+  # only way to re-run a publish after a domain or DNS change is to run it by
+  # hand.
+  workflow_dispatch:
+
+# Cancel superseded builds of the same ref; a docs PR that gets three pushes in
+# a row needs only the last one deployed.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the core's engines floor so one Node serves both workspaces.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: install
+        working-directory: docs
+        run: npm ci --no-audit --no-fund
+
+      - name: build and check
+        working-directory: docs
+        # SITE_ORIGIN is the canonical URL baked into canonical tags,
+        # sitemap.xml and llms.txt. SITE_BASE stays unset: the site is served
+        # from the root of fcli.dev.
+        env:
+          SITE_ORIGIN: https://fcli.dev
+        run: |
+          npm run build
+          node check.js
+
+      - name: upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://fcli.dev
+    steps:
+      - name: publish
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,32 @@
+{
+  "name": "@fcli.dev/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation site for f — static HTML, built from content/",
+  "scripts": {
+    "build": "node build.js",
+    "check": "node build.js && node check.js",
+    "format": "prettier --write assets/*.js build.js check.js README.md \"content/**/*.md\"",
+    "serve": "python3 -m http.server 8080 --directory dist"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  },
+  "prettier": {
+    "overrides": [
+      {
+        "files": ["content/**/*.md"],
+        "options": {
+          "proseWrap": "preserve"
+        }
+      }
+    ]
+  }
+}
