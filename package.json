@@ -33,10 +33,10 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kensand/fcli.git"
+    "url": "git+https://github.com/fclidev/fcli.git"
   },
   "bugs": {
-    "url": "https://github.com/kensand/fcli/issues"
+    "url": "https://github.com/fclidev/fcli/issues"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
