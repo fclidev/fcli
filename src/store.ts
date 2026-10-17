@@ -9,8 +9,9 @@ import {
   copyFileSync,
   readFileSync,
   writeFileSync,
+  realpathSync,
 } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, resolve, isAbsolute } from "node:path";
 import { execSync } from "node:child_process";
 import { fHome } from "./config.js";
 import { normalizeSource, sourceKind } from "./registry.js";
@@ -224,6 +225,57 @@ export function nameAllowed(name: string, f: { only?: string[]; except?: string[
  * - local source: copy it in (a local source is already a checkout you edit).
  * - npm sources resolve from node_modules at load time; nothing to install.
  */
+/** Resolve a local specifier (possibly `./relative`) against cwd. */
+function resolveLocalSpecifier(specifier: string): string {
+  // path.resolve(), NOT a file:// URL round-trip: the URL form percent-encodes,
+  // so `./my ucks` becomes `/tmp/…/my%20ucks` and the source is reported
+  // missing (0.3.0 did exactly this). resolve() also collapses `..`, which is
+  // what makes containment decidable. ONE function, used by installLocal and by
+  // the guard below: two lookalike resolvers silently disagree on relative paths
+  // and the guard then never fires.
+  if (isAbsolute(specifier)) return specifier;
+  try {
+    return resolve(realpathSync(process.cwd()), specifier);
+  } catch {
+    return resolve(process.cwd(), specifier);
+  }
+}
+
+function realpathOr(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path; // not there yet: cannot be inside anything
+  }
+}
+
+function isInside(parent: string, child: string): boolean {
+  return child === parent || child.startsWith(parent.endsWith("/") ? parent : parent + "/");
+}
+
+/**
+ * A local source that resolves inside the store, or null.
+ *
+ * Installing one copies a tree into itself: cpSync(abs, dest) with abs inside
+ * dest throws ERR_FS_CP_EINVAL and kills the run midway — and the failure mode
+ * *before* that throw is worse, because the copy partly lands and then the git
+ * path for the same bucket re-stamps .f-source.json with provenance for a repo
+ * the content did not come from. Observed on a real machine: `config/*` and
+ * `lib/*` deleted from the author's own bucket, which then claimed to be a clone
+ * of github.com/kensand/fcli-ucks.
+ *
+ * One comparison, protecting the model rather than adding machinery: core
+ * promises a store bucket is a cache (see installGitSource), so an author's work
+ * belongs outside it. Only store-inside-source is the hazard — a source that
+ * merely shares a label with a store ancestor is a name collision (ROADMAP C5),
+ * not a self-copy, and rejecting that would forbid legitimate sources.
+ */
+function sourceHitsStore(specifier: string): string | null {
+  const store = realpathOr(storeDir());
+  const abs = realpathOr(resolveLocalSpecifier(specifier));
+  return isInside(store, abs) ? abs : null;
+}
+
 export async function installSource(src: UckSource, force = false): Promise<boolean> {
   const { specifier } = normalizeSource(src);
   const kind = sourceKind(specifier);
@@ -231,6 +283,15 @@ export async function installSource(src: UckSource, force = false): Promise<bool
   const bucket = sourceBucket(src);
 
   if (kind === "local") {
+    const hit = sourceHitsStore(specifier);
+    if (hit) {
+      console.error(
+        `f: refusing local source '${specifier}' — it resolves inside the store ` +
+          `(${hit}). A store bucket is a cache, not an editing surface: install ` +
+          `from a separate clone instead.`,
+      );
+      return false;
+    }
     return installLocal(specifier, force, bucket);
   }
 
@@ -244,6 +305,19 @@ export async function installSource(src: UckSource, force = false): Promise<bool
 }
 
 /**
+ * Install/refresh one source. Resolves **true only when store content changed**,
+ * which is the question its caller actually asks. cli.ts re-installs local
+ * sources when the store is *empty*, and used to read "the git command exited
+ * 0" as "content changed". An unchanged refresh returned true, so the store was
+ * never seen as empty and EVERY f invocation re-copied every local source. That
+ * is what turned a mistyped local source into data loss: one bad config meant a
+ * destructive cpSync on every f command, not just on `f up`. It also made a
+ * local edit look like it needed two invocations, since the copy ran after the
+ * store had already been read for this run.
+ *
+ *   installGitSource: clone → true; refresh → true only if HEAD moved.
+ *   installLocal:     installed or replaced → true; skipped as present → false.
+ *
  * Install/refresh a git source as the bucket itself at ~/.f/ucks/<bucket>/.
  *
  * `force` (f up) is fetch + `git reset --hard <upstream>`: the clone is a cache
@@ -310,6 +384,7 @@ function installGitSource(
     throw new Error(`git fetch failed: ${firstLine(e)}`);
   }
 
+  const before = gitRevParseHead(dir);
   const target = ref ? `origin/${ref}` : remoteDefaultRef(dir);
   try {
     execSync(`git reset --hard ${quote(target)}`, {
@@ -336,7 +411,8 @@ function installGitSource(
   writeManifest(dir, specifier, url, ref, filters);
   ensureModuleMarkers(dir);
   installDepsInTree(dir);
-  return true;
+  // A content-level answer, not "the git commands succeeded": see installSource.
+  return gitRevParseHead(dir) !== before;
 }
 
 /**
@@ -438,6 +514,23 @@ function remoteDefaultRef(dir: string): string {
 }
 
 /** Record where a clone came from, inside the clone (survives f up). */
+/** Current HEAD sha of a bucket, or null (not a repo / unreadable). */
+function gitRevParseHead(dir: string): string | null {
+  try {
+    return (
+      execSync(`git rev-parse HEAD`, {
+        cwd: dir,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      })
+        .toString()
+        .trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 function writeManifest(
   dir: string,
   specifier: string,
@@ -569,9 +662,7 @@ function firstLine(e: unknown): string {
  * Returns true if it made progress.
  */
 async function installLocal(specifier: string, force: boolean, bucket: string): Promise<boolean> {
-  const abs = specifier.startsWith(".")
-    ? new URL(specifier, "file://" + process.cwd() + "/").pathname
-    : specifier;
+  const abs = resolveLocalSpecifier(specifier);
   if (!existsSync(abs)) {
     console.error(`f: local uck not found: ${abs}`);
     return false;
