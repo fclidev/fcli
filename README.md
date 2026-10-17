@@ -6,8 +6,8 @@
 
 `f` is a command line built to be read by an LLM. Every tool you hand a model
 costs tokens *before* it uses one — an MCP server with 20 tools puts ~1,440
-tokens of schema in front of the model on **every request**, used or not. `f`
-bills per command, not per catalogue:
+tokens of schema in front of the model on **every request**, used or not. `f` is
+just a command on your `PATH`; it only costs tokens when you actually use it:
 
 ```
 f creds get prod.db     →  5 tokens
@@ -319,8 +319,9 @@ No sandbox. No restrictions. Ucks are first-class.
 3. **npm-native** — extensions are packages, `npm i` to install
 4. **Full runtime** — no sandbox, ucks can do anything
 5. **Context injection** — ucks know what else is registered
-6. **No catalogue** — the model discovers `f` by running it, so nothing is
-   re-sent per request. This is the whole argument; everything else is shape.
+6. **Nothing re-sent** — the model discovers `f` by running it, so there is no
+   tool list sitting in the context of every request. This is the whole
+   argument; everything else is shape.
 
 ## Development
 

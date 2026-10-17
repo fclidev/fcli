@@ -1,13 +1,14 @@
 ---
 page: home
 title: Overview
-summary: f is a token-efficient CLI for LLMs. Every tool you hand a model costs tokens before it uses one - f bills per command, not per catalogue. A home for the ucks lives on /ucks/.
+summary: f is a token-efficient CLI for LLMs. Every tool you hand a model costs tokens before it uses one - f only costs tokens when you actually use it. A home for the ucks lives on /ucks/.
 ---
 
 !!!hero
 <span class="hero-title"><span>Stop paying token tax</span> <span>for every tool call</span></span>
 <p class="hero-lede">Every tool you give a model costs tokens <em>before</em> it
-uses one. <code>f</code> bills per command, not per catalogue.</p>
+uses one. <code>f</code> is a command on your PATH — it only costs tokens when you
+actually use it.</p>
 <div class="install">
   <pre><code id="install-cmd">npm i -g @fcli.dev/f</code></pre>
   <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy install command">Copy</button>
@@ -60,8 +61,9 @@ build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code
 
 # Home
 
-`f` is a command line built to be read by an LLM. The whole interface is one
-line on your `PATH`, and a model discovers it by running it:
+Every tool you give a model costs tokens before it uses one. `f` is a command
+line built to be read by an LLM: the whole interface is one line on your `PATH`,
+and a model discovers it by running it:
 
 ```sh
 f creds get prod.db
@@ -70,7 +72,7 @@ f creds get prod.db
 Run that and it costs **five tokens**. Counted, not estimated — `o200k_base` and
 `cl100k_base` agree. The equivalent MCP tool definition is **88 tokens**, and it
 gets paid on every request whether the model calls it or not. Multiply that by
-the catalogue, because the catalogue is where the tax actually lives:
+the number of tools, because the tool list is where the cost actually is:
 
 | What you wire up                      | What the model pays                    |
 | ------------------------------------- | -------------------------------------- |
