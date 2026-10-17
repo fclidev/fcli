@@ -46,7 +46,7 @@ src/update.ts     # f up: force re-fetch all sources
 ## The uck contract (src/types.ts)
 
 **The normative contract lives in `CONTRACT.md` in the `fcli-ucks` repo**
-(github.com/kensand/fcli-ucks) — read it before changing loader/dispatch
+(github.com/fclidev/fcli-ucks) — read it before changing loader/dispatch
 behavior. Summary:
 
 A uck module (`<dir>/index.js`) exports:
@@ -153,7 +153,7 @@ bucket being a working tree rather than a content dump:
 ## Repo topology (where things live)
 
 - **this repo** (`@fcli.dev/f`) — the core, published to npm.
-- **`fcli-ucks`** (github.com/kensand/fcli-ucks) — the *default* ucks (v, w,
+- **`fcli-ucks`** (github.com/fclidev/fcli-ucks) — the *default* ucks (v, w,
   ls, config, creds, uck). `DEFAULTS_REPO` in `src/config.ts` points here and
   is seeded into the global config on first install.
 - **`kensand-fcli-ucks`** (forgejo.kensand.net/kensand.net/kensand-fcli-ucks)

@@ -4,7 +4,7 @@ import type { FConfig, UckSource } from "./types.js";
 
 /** The defaults repo — seeded into the global config on first install. */
 export const DEFAULTS_REPO =
-  process.env.F_UCKS_REPO ?? "https://github.com/kensand/fcli-ucks.git";
+  process.env.F_UCKS_REPO ?? "https://github.com/fclidev/fcli-ucks.git";
 
 export function fHome(): string {
   return join(process.env.HOME ?? "", ".f");
