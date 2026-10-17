@@ -1,11 +1,12 @@
 ---
 page: home
 title: Overview
-summary: f is a token-efficient CLI for LLMs. Every tool you hand a model costs tokens before it uses one - f bills per command, not per catalogue. Install it, then read the 300 words underneath.
+summary: A home for all the ucks you don't give. A token-efficient CLI for LLMs - f bills per command, not per catalogue. Install it, then read the words underneath.
 ---
 
 !!!hero
 <p class="hero-title">Stop paying token tax<br>for every tool call</p>
+<p class="hero-tag">A home for all the ucks you don’t give.</p>
 <p class="hero-lede">Every tool you give a model costs tokens <em>before</em> it
 uses one. <code>f</code> bills per command, not per catalogue.</p>
 <div class="install">
@@ -42,12 +43,27 @@ unlocked  8m12s left
 <span class="t-cmd">f fj joblogs 3773 "--- FAIL"</span>
 build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code></pre>
 </div>
+<div class="uck-wall" aria-label="Ucks from different sources, all answering as f">
+  <p class="uck-group"><span>the defaults</span><i>@fcli.dev/ucks, on first install</i></p>
+  <div class="uck-row"><code>f creds</code><span>store credentials, encrypted, with a TTL daemon</span></div>
+  <div class="uck-row"><code>f skills</code><span>markdown instructions, loaded into context on demand</span></div>
+  <div class="uck-row"><code>f config</code><span>edit f.config.json with JSONPath</span></div>
+  <div class="uck-row"><code>f uck</code><span>push ucks from the store to a git repo</span></div>
+  <p class="uck-group"><span>someone else’s repo</span><i>added with one line of config</i></p>
+  <div class="uck-row"><code>f fj</code><span>Forgejo/Gitea — all 491 endpoints of it</span></div>
+  <div class="uck-row"><code>f gh</code><span>GitHub, via @octokit/rest</span></div>
+  <div class="uck-row"><code>f ha</code><span>Home Assistant: states, scenes, automations</span></div>
+  <div class="uck-row"><code>f vaultwarden</code><span>read secrets from a Vaultwarden vault</span></div>
+  <div class="uck-row"><code>f ssh</code><span>ssh/scp/rsync with a key that never touches disk</span></div>
+  <div class="uck-row"><code>f pi-models</code><span>save pi’s model config in the encrypted store</span></div>
+</div>
 !!!
 
 # Home
 
-`f` is a command line built to be read by an LLM. The whole interface is one
-line on your `PATH`, and a model discovers it by running it:
+**A home for all the ucks you don't give.** `f` is a command line built to be
+read by an LLM. The whole interface is one line on your `PATH`, and a model
+discovers it by running it:
 
 ```sh
 f creds get prod.db
@@ -84,6 +100,20 @@ what is actually installed rather than from a manifest that can drift.
 Drop it in the store, or `npm i` a package, and it answers on the next call. Full
 Node.js runtime — `child_process`, `fs`, `http`, the network. No sandbox, no
 manifest review, no restart.
+
+## An uck doesn't need to be perfect
+
+It just needs to answer when you call it. Most of what lives in a store got
+written in an afternoon to stop one specific annoyance — `f ha-ws` exists because
+Home Assistant's REST API cannot create an automation and returns a 404 when you
+try, so the uck drives the WebSocket API instead. It is not elegant. It answers.
+
+That low bar is the reason `f` spreads at all. A tool you have to polish before
+you trust it never gets written; a tool you can finish in an evening and stop
+thinking about gets written every time something is mildly annoying. And when an
+uck turns out to matter, growing it is editing a file, not starting over — that
+is exactly the [`f fj` story](/recipes/), where a whole missing capability landed
+as two added words on a uck that already existed.
 
 ## What this is, in three words
 

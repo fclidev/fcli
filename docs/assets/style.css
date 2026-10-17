@@ -386,6 +386,16 @@ aside {
   text-wrap: balance;
 }
 
+.hero-tag {
+  /* The catchphrase, one notch under the headline: set in the accent, sized to
+     read as a subtitle rather than competing with .hero-title. */
+  font-size: clamp(1.05rem, 1.7vw, 1.32rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  margin: -0.35rem 0 1.1rem;
+}
+
 .hero-lede {
   font-size: 1.12rem;
   line-height: 1.55;
@@ -400,6 +410,59 @@ aside {
 }
 .hero-lede code {
   color: var(--accent);
+}
+
+/* The uck wall: the catchphrase made literal. Every uck, from whatever source,
+   sits in one column and answers the same way. Group headings name the origin to
+   show provenance without turning the list into a table. Semantic rows (not a
+   <pre>) so it reflows, stays selectable, and reaches llms.txt as text. */
+.uck-wall {
+  max-width: 34rem;
+  margin: 1.75rem 0 0;
+  padding: 1.1rem 1.15rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.uck-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 1.1rem 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+}
+.uck-group:first-child {
+  margin-top: 0;
+}
+.uck-group i {
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
+.uck-row {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  padding: 0.16rem 0;
+}
+.uck-row code {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.uck-row span {
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  line-height: 1.4;
 }
 
 /* Install: one line, obviously copyable. The button is a progressive

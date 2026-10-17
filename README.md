@@ -2,6 +2,8 @@
 
 **Stop paying token tax for every tool call.**
 
+*A home for all the ucks you don't give.*
+
 `f` is a command line built to be read by an LLM. Every tool you hand a model
 costs tokens *before* it uses one — an MCP server with 20 tools puts ~1,440
 tokens of schema in front of the model on **every request**, used or not. `f`
