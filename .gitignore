@@ -1,3 +1,12 @@
 node_modules
 dist
 *.tsbuildinfo
+# generated thumbnails and scratch from the render/measure probes
+docs/thumbs/thumbs/
+docs/thumbs/_*.png
+docs/thumbs/_*.html
+docs/thumbs/_*.svg
+docs/thumbs/.check*
+docs/thumbs/.render/
+docs/thumbs/.neg.*
+docs/thumbs/__pycache__/
