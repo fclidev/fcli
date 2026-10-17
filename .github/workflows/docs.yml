@@ -17,16 +17,15 @@ name: docs
 on:
   push:
     branches: [main]
-    paths:
-      - "docs/**"
-      - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
       - ".github/workflows/docs.yml"
   # Editing the custom domain in the repo UI does not push anything, so the
   # only way to re-run a publish after a domain or DNS change is to run it by
-  # hand.
+  # hand. Kept free of any paths: filter: a `paths` filter applies to every
+  # event in the same on: block, so a dispatch on a commit whose diff touched
+  # no docs would have been filtered out and never run.
   workflow_dispatch:
 
 # Cancel superseded builds of the same ref; a docs PR that gets three pushes in
