@@ -7,7 +7,7 @@ name: publish
 #   1. https://www.npmjs.com  ->  Access Tokens -> Trusted Publishers
 #   2. "Add trusted publisher":
 #        Provider:       GitHub
-#        GitHub owner:   kensand
+#        GitHub owner:   fclidev
 #        Repository:     fcli
 #        Environment:    npm
 #   3. Approve. Only this workflow (from that repo + environment) may now
