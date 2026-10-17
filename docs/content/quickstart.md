@@ -23,15 +23,16 @@ On first run `f` seeds its config with the
 [fcli-ucks](https://github.com/kensand/fcli-ucks) repo and clones it into the
 store. The defaults are:
 
-| Uck        | Description                                   |
-| ---------- | --------------------------------------------- |
-| `f v`      | print version                                 |
-| `f w <b>`  | locate binary (alias for `which`)             |
-| `f ls [p]` | list files (terse)                            |
-| `f config` | edit `f.config.json` via JSONPath             |
-| `f creds`  | store credentials (encrypted, daemon, TTL)    |
-| `f skills` | manage skill files (markdown, read on demand) |
-| `f uck`    | push store ucks to a git repo                 |
+| Uck           | Description                                         |
+| ------------- | --------------------------------------------------- |
+| `f v`         | print version                                       |
+| `f w <b>`     | locate binary (alias for `which`)                   |
+| `f ls [p]`    | list files (terse)                                  |
+| `f config`    | edit `f.config.json` via JSONPath                   |
+| `f creds`     | store credentials (encrypted, daemon, TTL)          |
+| `f providers` | list credential providers registered with `f creds` |
+| `f skills`    | manage skill files (markdown, read on demand)       |
+| `f uck`       | push store ucks to a git repo                       |
 
 `up` and `help` are core builtins — special-cased in core before the uck
 registry is read, so they work even with an empty store. `help` is the no-arg

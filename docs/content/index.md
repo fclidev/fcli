@@ -53,7 +53,7 @@ f
 - [Install](/install/) — get `f` on your PATH.
 - [Quickstart](/quickstart/) — first run, the default ucks.
 - [Ucks](/ucks/) — what a uck is, the store, the `register` contract.
-- [Builtins](/builtins/) — the seven ucks that arrive on first install.
+- [Builtins](/builtins/) — the eight ucks that arrive on first install.
 - [Config](/config/) — `f.config.json`, sources, filters.
 - [Skills](/skills/) — markdown instructions, loaded on demand.
 - [Credentials](/credentials/) — encrypted secrets with `f creds`.
