@@ -38,41 +38,44 @@ dist/        build output (gitignored)
 
 ## Publishing
 
-`.github/workflows/docs.yml` builds this directory and publishes `dist/` to the
-`gh-pages` branch; Pages serves that branch at the root of `fcli.dev`. A push to
-`main` builds and deploys (the deploy job requires `main`, so a `workflow_dispatch`
-re-run must come from `main`); a PR builds and checks but does not deploy.
+`.github/workflows/docs.yml` builds this directory and publishes `docs/dist` as a
+Pages **artifact**. A push to `main` builds and deploys; a PR builds and checks but
+does not deploy.
 
-Two things about this branch are load-bearing:
+**Pages must be in "GitHub Actions" mode, and the workflow enforces it** with
+`actions/configure-pages` in the deploy job. Two ways exist to publish a repository
+and they fight:
 
-**`.nojekyll` must be in `dist/`.** Pages runs Jekyll over a branch publishing
-source unless that file is present, and Jekyll treats the already-built site as
-source input: it reads each page's frontmatter block as its own, re-renders
-`index.html`, rewrites the title from `docs/README.md` via `jekyll-seo-tag`, drops
-the pretty-URL page directories, replaces the content-hashed assets with theme CSS,
-and stops copying `llms.txt` through. `npm run serve` copies `dist/` verbatim, so
-none of that is visible locally — `npm run check` fails if the marker is missing.
+| mode                 | what it serves                                | who wins                                                                               |
+| -------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Deploy from a branch | Jekyll output built from a branch plus folder | GitHub's own `pages build and deployment` workflow, on every push to the source branch |
+| GitHub Actions       | the artifact this workflow uploads            | this workflow                                                                          |
 
-**The deploy job is restricted to `main`.** The `github-pages` environment uses a
-branch policy, so any other ref is rejected with "Branch X is not allowed to
-deploy to github-pages due to environment protection rules". Building `docs/**`
-on every push and gating only the deploy keeps that failure mode off feature
-branches while keeping the content-build trigger narrow.
+In branch mode the Jekyll build overwrites whatever `deploy-pages` publishes, and
+`deploy-pages` still reports success. That is what happened on the first cutover:
+fcli.dev served Jekyll-rendered `docs/README.md` — title `fcli.dev — the
+documentation site | fcli`, `/install/` and every other page 404, `llms.txt` an HTML
+error page — plus `/build.js` and `/package.json` as public files, because
+`main:/docs` was also the publishing source and holds the generator. This workflow
+was green the whole time.
 
-The publishing source is a **branch**, not `main:/docs`, because `build.js` emits
-root-absolute URLs (`/install/`, `/style-<hash>.css`) and bakes `SITE_ORIGIN` into
-every canonical tag, into `sitemap.xml` and into `llms.txt`. Under a non-root
-publish those all fall off the root. Publishing a branch at the domain root keeps
-`SITE_BASE` empty, so neither `build.js` nor `check.js` needs base-path awareness —
-`check.js` has none today and would report 11 false failures under
-`SITE_BASE=/fcli`.
+Two rules follow, both enforced:
+
+- **`docs/` must never be a Pages publishing source.** `/docs` on the default branch
+  is GitHub's built-in guess for "the site lives here", so stale branch-mode
+  settings find it. What gets published is the _artifact_; this directory is source
+  code.
+- **`dist/.nojekyll` stays.** Actions mode does not run Jekyll, so the marker is
+  inert today. It is kept so a fallback to branch mode cannot silently mangle the
+  site, and `npm run check` fails if it disappears.
+
+The `deploy` job is restricted to `refs/heads/main`: the `github-pages` environment
+carries a branch policy allowing only `main`, so a deploy from another ref fails with
+"Branch X is not allowed to deploy to github-pages due to environment protection
+rules".
 
 `CNAME` is tracked here and copied into `dist/`, which is where Pages reads the
-domain from. That keeps the domain in git rather than as an untracked file the UI
-would write into the source branch.
-
-`SITE_ORIGIN` is set in the workflow. Change it there if the canonical URL ever
-moves.
+domain from.
 
 ## Adding a page
 
