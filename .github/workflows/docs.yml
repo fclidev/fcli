@@ -15,6 +15,12 @@ name: docs
 # attestation GitHub requires for that. No PAGES_TOKEN secret is stored.
 
 on:
+  # Build on any push, deploy only from main. The github-pages environment has a
+  # branch policy that permits main and nothing else, so a deploy attempted from
+  # another ref fails with "Branch X is not allowed to deploy to github-pages due
+  # to environment protection rules". Gating the deploy job rather than the
+  # trigger keeps that error off feature branches while keeping the content build
+  # narrow (docs/** only).
   push:
     branches: [main]
   pull_request:
@@ -25,7 +31,8 @@ on:
   # only way to re-run a publish after a domain or DNS change is to run it by
   # hand. Kept free of any paths: filter: a `paths` filter applies to every
   # event in the same on: block, so a dispatch on a commit whose diff touched
-  # no docs would have been filtered out and never run.
+  # no docs would have been filtered out and never run. Dispatch from main so
+  # the deploy job's branch guard passes.
   workflow_dispatch:
 
 # Cancel superseded builds of the same ref; a docs PR that gets three pushes in
@@ -74,7 +81,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

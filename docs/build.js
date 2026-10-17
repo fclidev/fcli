@@ -280,6 +280,16 @@ function build() {
   fs.mkdirSync(OUT, { recursive: true });
   const assets = writeAssets();
 
+  // GitHub Pages runs Jekyll over the published tree unless this file exists.
+  // dist/ IS the build output, so a second build over it is destructive: Jekyll
+  // read our frontmatter block as its own, re-rendered index.html, rewrote the
+  // title from docs/README.md via jekyll-seo-tag, dropped the pretty-URL page
+  // directories, and swapped in theme CSS (/assets/css/style.css) for our
+  // content-hashed assets. It also stopped copying llms.txt through, so the URL
+  // served an HTML error page. Local `npm run serve` serves dist/ verbatim,
+  // which is why this only ever broke in production.
+  fs.writeFileSync(path.join(OUT, ".nojekyll"), "");
+
   const pages = [];
   for (const rel of walk(CONTENT)) {
     const raw = fs.readFileSync(path.join(CONTENT, rel), "utf8");

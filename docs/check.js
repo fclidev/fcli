@@ -17,6 +17,13 @@ const fail = (msg) => problems.push(msg);
 
 if (!fs.existsSync(DIST)) fail(`no dist/ — run node build.js first`);
 
+// Pages runs Jekyll over the published tree without this marker, which silently
+// rewrites the site: titles, CSS and the pretty-URL page directories all change
+// and llms.txt stops being copied. Cheap to lose, invisible locally, loud in
+// production — so fail the build rather than discover it from the live site.
+if (fs.existsSync(DIST) && !fs.existsSync(path.join(DIST, ".nojekyll")))
+  fail("dist/.nojekyll missing — Pages will build the site with Jekyll");
+
 function pages() {
   const found = new Map();
   const stack = [DIST];
