@@ -6,7 +6,7 @@ import { ensureGlobalConfig, migrateLegacyDefaults, allSources } from "./config.
 import { installSource, installedUcks } from "./store.js";
 import { acquireStoreLock } from "./lock.js";
 import { updateAll } from "./update.js";
-import { help } from "./help.js";
+import { helpNames, searchMatches, searchUsage } from "./help.js";
 import { type Uck, type UckRunContext, CONTRACT_VERSION } from "./types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -90,7 +90,36 @@ export async function run(argv: string[]): Promise<void> {
   const [name, ...rest] = argv;
 
   if (!name || name === "help" || name === "--help" || name === "-h") {
-    console.log(help(Object.values(ucks), fVersion));
+    console.log(helpNames(Object.values(ucks), fVersion));
+    return;
+  }
+
+  // `f search` is core rather than a uck for the same reason `help` and `up`
+  // are: it has to work against the registry with an empty store, and it is the
+  // path that keeps discovery bounded as the store grows.
+  if (name === "search") {
+    if (!rest.length) {
+      console.log(searchUsage());
+      return;
+    }
+    const hits = searchMatches(Object.values(ucks), rest.join(" "));
+    if (!hits.length) {
+      // Say so plainly: a silent empty result reads as "no such capability"
+      // and sends the model off to invent a workaround.
+      console.log(`no uck matched: ${rest.join(" ")}`);
+      process.exitCode = 1;
+      return;
+    }
+    const byName = hits.filter((h) => h.byName);
+    const byDesc = hits.filter((h) => !h.byName);
+    for (const h of byName) console.log(`${h.name}  ${h.desc}`);
+    if (byDesc.length) {
+      // Separate section: these did not match a name, so they are leads rather
+      // than answers. Folding them in would let a description keyword outrank
+      // the command the query actually named.
+      if (byName.length) console.log("maybe:");
+      for (const h of byDesc) console.log(`${h.name}  ${h.desc}`);
+    }
     return;
   }
 
@@ -110,7 +139,7 @@ export async function run(argv: string[]): Promise<void> {
   const uck: Uck | undefined = ucks[name];
   if (!uck) {
     // exitCode + return, never exit(): see the note at the bottom.
-    console.error(`f: unknown uck '${name}'. Run 'f help' to list ucks.`);
+    console.error(`f: unknown uck '${name}'. Run 'f' to list ucks, 'f search <query>' to look one up.`);
     process.exitCode = 1;
     return;
   }

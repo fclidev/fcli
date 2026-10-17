@@ -31,7 +31,7 @@ export function register(ctx) {
 
   return {
     name: "myuck", // the word after `f`
-    desc: "what it does (terse)", // shown by `f help`
+    desc: "what it does (terse)", // shown by `f search` and `f <name> --help`
     run: (argv, args, runCtx) => {
       // args._ is the remaining CLI args
       // argv is the full argv
@@ -59,8 +59,9 @@ shape, so they cannot drift apart. What differs is what is _in_ them:
 - At **register** time `ucks`/`registry` are a **partial view** — only the ucks
   that loaded before yours, and not your own name. Use it there for feature
   detection (`"creds" in ctx.registry`), never for an authoritative peer lookup.
-- At **run** time the view is complete: `ucks` is the list `f help` prints and
-  `registry` holds every registered uck. Inter-uck calls belong in `run`.
+- At **run** time the view is complete: `ucks` is every registered uck (name +
+  desc) and `registry` holds every registered uck. Inter-uck calls belong in
+  `run`.
 
 ```js
 export function register(_ctx) {

@@ -8,7 +8,8 @@ summary: Run f, list its ucks, and add your own. The default ucks and the store.
 After [installing](/install/) `f`:
 
 ```sh
-f            # same as f help — list every uck (name + one-line description)
+f            # the index: every uck name, no descriptions
+f search <q> # rank ucks against a query (name, then description)
 f v          # print the version
 f ls .       # list files (terse)
 f w node     # locate a binary (alias for which)

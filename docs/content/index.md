@@ -14,22 +14,13 @@ summary: f is a command line interface for LLM agents. Commands are directories 
 <div class="terminal" aria-label="Example f session">
   <div class="term-bar"><i></i><i></i><i></i><span>~/repo</span></div>
   <pre><code><span class="t-cmd">f</span>
-config  edit f.config.json via JSONPath (get/set/add/remove/list)
-creds   store credentials (scrypt+AES-GCM, daemon+socket, ttl)
-fj      Forgejo/Gitea API (ls/call/&lt;METHOD&gt; &lt;path&gt;)
-ls      list files (terse, one per line)
-skills  manage local skill entries (search/ls/show/add/rm)
-uck     push store ucks to a git repo (bucket name = target name)
-v       print f version
+config     creds      fj        ha         ls         skills     v
+creds      df         gh        ha-ws      pi-models  ssh        w
 
-<span class="t-cmd">f ls src</span>
-cli.ts
-config.ts
-help.ts
-index.ts
-lock.ts
-registry.ts
-store.ts
+<span class="t-cmd">f search credential</span>
+creds  store credentials (scrypt+AES-GCM,…
+providers  list credential providers reg…
+vaultwarden  read secrets from a Vaultwar…
 
 <span class="t-cmd">f creds status</span>
 unlocked  8m12s left
@@ -61,36 +52,53 @@ build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code
 
 `f` is a command line interface for LLM agents. It is a single executable on
 `PATH`; an agent learns its commands by running `f`, not from a declared tool
-schema. Commands cost nothing until invoked — the listing is the only
-always-present cost.
+schema. A command costs nothing until invoked, and the always-present cost is a
+name index rather than a description per command.
 
 ```sh
 f creds get prod.db
 ```
 
-Token cost is measured with `js-tiktoken` under `o200k_base` and `cl100k_base`,
-which agree on every figure below.
+Token counts come from `docs/scripts/count-tokens.mjs`, which reads the `f`
+binary's own output and a real uck store — no figure below is typed by hand.
+Counts use `js-tiktoken` under `o200k_base`, cross-checked against
+`cl100k_base`; the ranks agree on invocation strings and short queries and differ
+by 1–2 tokens per line on descriptions dense with slashes or paths.
 
-| Cost                             | Tokens           | When it is paid  |
-| -------------------------------- | ---------------- | ---------------- |
-| `f creds get prod.db`            | 5                | on invocation    |
-| `f help`, first run (8 commands) | 161              | once per session |
+| Cost                            | `o200k_base` | `cl100k_base` | When it is paid  |
+| ------------------------------- | ------------ | ------------- | ---------------- |
+| `f v`                           | 2            | 2             | on invocation    |
+| `f creds get prod.db`           | 5            | 5             | on invocation    |
+| `f fj joblogs 3773 "--- FAIL"`  | 10           | 10            | on invocation    |
+| `f` index, 16 ucks installed    | 59           | 60            | once per session |
+| `f search ssh`                  | 14           | 13            | per query        |
+| `f search credential` (3 hits)  | 33           | 34            | per query        |
+| `f search nothingzzz` (0 hits)  | 8            | 9             | per query        |
 
-Both counted locally with `js-tiktoken`; the two encoders agree.
+The shape of the cost matters more than any single number. An MCP tool
+definition sits in the context of every request whether or not the model calls
+it, and its size depends on how verbosely the server's author wrote the
+description. `f` separates the two costs: the index carries names only, so its
+marginal cost is the name itself — measured at 2.9 tokens per uck — and
+descriptions are paid only for the ucks a query actually returned.
 
-The comparison worth making is not a token count but a payment schedule: an MCP
-tool definition sits in the context of every request whether or not the model
-calls it, and `f help` is fetched once. Absolute sizes depend on description
-length, so they are not stated here as a single number.
+That separation is also why the full listing is no longer the entry point.
+Printing name plus description for every uck measured 161 tokens at 8 ucks and
+375 at 16, growing about 21 tokens per uck; on the same store the names-only
+index is 59. Names cannot be padded the way descriptions can, so the index is
+the one discovery surface whose cost you can predict.
 
-For scale, measured elsewhere (neither count produced here; both used the same
-`o200k_base` encoder): real MCP servers average roughly **140–730 tokens per
-tool definition** — GitHub 138, Playwright 152, Kubernetes 222, Notion 726 —
-across a 18-server sample of 256 tools and 77,877 tokens. A separate benchmark
-of verbose production schemas measured 466 tokens per tool, and reports that a
-72-tool surface costs ~33,700 tokens, 16.9% of a 200k window, before the first
-user message. Sources: [tooltax](https://github.com/duskel/tooltax) and
-[mcp-turnstile](https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md).
+For MCP-side scale — measured by others, not here, using the same `o200k_base`
+rank. [tooltax](https://github.com/duskel/tooltax) drives each server over
+stdio, calls `tools/list`, and tokenizes the response; its 2026-09-29 run scored
+18 servers, 256 tools, 77,877 tokens, with per-tool cost from 77.6 (archived
+Puppeteer, 7 tools) to 726.3 (Notion, 24 tools): GitHub 138.0, Playwright 151.7,
+Filesystem 170.2, Kubernetes 222.2. A separate benchmark of verbose production
+schemas ([mcp-turnstile](https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md))
+measured 468 tokens per tool at both 24 tools (11,213 tokens) and 72 tools
+(33,709 tokens, 16.9% of a 200k window) before the first user message. The
+per-tool figures span roughly 8× across servers, so the only honest summary is a
+range.
 
 ## Why a CLI and not MCP
 
@@ -98,10 +106,12 @@ user message. Sources: [tooltax](https://github.com/duskel/tooltax) and
 `f` is one executable on `PATH`: no daemon, no handshake, no protocol version
 negotiation.
 
-**Discovery at runtime.** `f help` lists every installed command, one line each.
-That output is generated from the store at invocation time, so it reflects what
-is actually installed rather than a manifest that can drift. Output is plain
-text: no colors, no banner, no completion message.
+**Discovery at runtime, in two steps.** `f` prints the names of every installed
+uck; `f search <query>` ranks them against what you are trying to do, and
+`f <uck> --help` gives the detail for one. Both are generated from the store at
+invocation time, so they reflect what is actually installed rather than a
+manifest that can drift. Output is plain text: no colors, no banner, no
+completion message.
 
 **Extension is a directory.** A command is a directory containing `index.js`.
 Adding it to the store, or `npm i`-ing a package, makes it available on the next
@@ -141,7 +151,7 @@ arbitrary GitHub repo or npm package. See [Config](/config/).
 ## Pages
 
 - [Install](/install/) — `npm i -g @fcli.dev/f`, and what the first run writes.
-- [Quickstart](/quickstart/) — read `f help`, add a uck, run it.
+- [Quickstart](/quickstart/) — run `f`, search it, add a uck, run it.
 - [Builtins](/builtins/) — every command present on a fresh install, one section
   each.
 - [Ucks](/ucks/) — the `register(ctx)` contract, the store layout, shadowing.

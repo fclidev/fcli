@@ -116,8 +116,8 @@ stable machine-readable surface to generate from (ucks come from a store whose
 contents differ per machine). The generated reference comes back only if `f`
 grows a stable export for it. Until then `npm run check` verifies links, nav
 coverage, frontmatter and heading anchors — it cannot verify that the prose
-matches the binary, so the builtins page is checked against `f help` by hand when
-`f` releases.
+matches the binary, so the builtins page is checked against `f` and `f search`
+by hand when `f` releases.
 
 | File                      | Prettier-managed      | Notes                                                                  |
 | ------------------------- | --------------------- | ---------------------------------------------------------------------- |

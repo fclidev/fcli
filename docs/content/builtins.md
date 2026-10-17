@@ -5,8 +5,8 @@ summary: Every uck that ships with f — v, w, ls, config, creds, providers, ski
 
 # Builtins
 
-What you get on a fresh install, with nothing configured. `f help` is the live
-list; this page is the same thing with details.
+What you get on a fresh install, with nothing configured. `f` prints the live
+list of names; this page is the same set with details.
 
 ## First run
 
@@ -17,26 +17,22 @@ build of the [fcli-ucks](https://github.com/fclidev/fcli-ucks) repo, one
 directory per uck.
 
 ```sh
-f help
+f
 ```
 
 ```text
-f v0.3.1 — token-efficient CLI
+f v0.3.3
 
-usage: f <uck> [args]
+config     creds      ls         providers    skills       uck          v            w
 
-ucks:
-  config  edit f.config.json via JSONPath (get/set/add/remove/list)
-  creds  store credentials (scrypt+AES-GCM, daemon+socket, ttl); falls back to credential providers on a miss
-  ls  list files (terse, one per line)
-  providers  list credential providers registered with f creds
-  skills  manage local skill entries (search/ls/show/add/rm) in f.config.json
-  uck  push store ucks to a git repo (bucket name = target name)
-  v  print f version
-  w  locate binary (alias for which)
-
-run 'f <uck> --help' for details.
+f <uck> --help | f search <query>
 ```
+
+Names only, deliberately. A name-plus-description listing grows linearly with
+the store (measured at ~21 tokens per uck on real descriptions), so it cannot be
+the default surface for a large store. Read one description with
+`f <uck> --help`, or get a filtered set with `f search <query>` — see
+[Core builtins](#core-builtins).
 
 `help` and `up` are not in that list: they are special-cased in core rather
 than ucks in the store — see [Core builtins](#core-builtins).
@@ -195,12 +191,16 @@ Pushes are fast-forward only, never `--force`; authentication is delegated to
 Two commands are handled in core, before the uck registry is consulted, so
 they work even with an empty store:
 
-| Command  | Behavior                                                    |
-| -------- | ----------------------------------------------------------- |
-| `f help` | List every uck (name + one-line desc). Also the no-arg `f`. |
-| `f up`   | Re-fetch every configured source into the store.            |
+| Command    | Behavior                                                                                |
+| ---------- | --------------------------------------------------------------------------------------- |
+| `f help`   | List every uck name, no descriptions. Also the no-arg `f`.                              |
+| `f search` | Rank ucks against a query: name matches first, description-only matches under `maybe:`. |
+| `f up`     | Re-fetch every configured source into the store.                                        |
 
-`f help`, `f --help`, `f -h`, and bare `f` are the same thing. `f up` is the
+`f help`, `f --help`, `f -h`, and bare `f` are the same thing. `f search` is
+special-cased in core for the same reason `help` and `up` are: it works against
+the registry even with an empty store. Matching is by substring and word prefix,
+so it is predictable rather than fuzzy — a typo does not match. `f up` is the
 only routine run that touches the network — see [Update](/update/).
 
 ## Where they live

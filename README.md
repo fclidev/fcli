@@ -12,14 +12,23 @@
 `f` is a single executable on `PATH`. An agent learns its commands by running
 `f`, not from a declared tool schema, so nothing is paid until a command is
 invoked. An MCP tool definition sits in the context of *every* request whether
-the model calls it or not; `f help` is fetched once per session.
+the model calls it or not; `f` prints names only, and descriptions come back for
+the ucks a query actually matched.
 
-Measured locally with `js-tiktoken` (`o200k_base` and `cl100k_base` agree):
+Measured locally with `js-tiktoken` (`o200k_base`, cross-checked against
+`cl100k_base`):
 
 ```
-f creds get prod.db            →    5 tokens, on invocation
-f help, first run (8 commands) →  161 tokens, once per session
+f v                          →   2 tokens, on invocation
+f creds get prod.db          →   5 tokens, on invocation
+f           (index, 16 ucks) →  59 tokens, once per session
+f search ssh                 →  14 tokens, per query
+f search credential          →  33 tokens, per query
 ```
+
+Discovery is two steps: `f` lists names, `f search <query>` ranks them, and
+`f <uck> --help` gives detail on one. The index costs about 2.9 tokens per uck
+because a name cannot be padded the way a description can.
 
 For MCP-side scale — measured elsewhere, not here, same encoder — production
 servers average roughly **140–730 tokens per tool definition**: GitHub 138,
@@ -96,7 +105,10 @@ f <uck> [args]
 | `f creds ...` | store credentials (encrypted, daemon+ttl) |
 | `f uck ...` | push store ucks to a git repo |
 | `f up` | full update: re-fetch all configured uck sources |
-| `f help` | list all ucks |
+| `f help` | list every uck name |
+
+`f help`, `f search <query>`, and `f up` are handled in core before the uck
+registry is consulted, so they work against an empty store.
 
 `v`, `w`, and `ls` are **default ucks** — they ship in the
 [`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package
