@@ -68,6 +68,14 @@ whether a printed secret survived depended on whether the reader happened to be
 draining. The unknown-uck path had the same bug and additionally discarded
 everything printed earlier in the same run.
 
+**`f up` no longer mistakes its own `npm install` for your uncommitted work.**
+Dependencies are installed per uck, and `package-lock.json` is tracked — so the
+lockfile npm rewrote counted as a local change, `f up` skipped the bucket it was
+about to update, and suggested `--force` to discard changes nobody made. Re-running
+skipped it again with no explanation: an up-to-date bucket silently never updated,
+possibly for weeks. `node_modules` was already excluded; the lockfile now is too.
+Symptom to remember: *"bucket X has local changes"* naming a file you never touched.
+
 ## Bugs found while doing the above
 
 - **Any source with a `#ref` could not be installed.** `gitUrl()` passed the
