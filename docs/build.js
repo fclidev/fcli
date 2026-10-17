@@ -354,6 +354,11 @@ function build() {
           rel === "index.md"
             ? "f — a token-efficient CLI for LLMs"
             : `${title} · f`,
+        // Dropped in an earlier refactor, which left <meta name="description">
+        // and og:description empty on every page: layout() destructures `summary`
+        // and emits both from it, while search.json read the same value straight
+        // off `pages`, so only the HTML meta tags went blank.
+        summary,
         hero,
         home: meta.page === "home",
         body: html,

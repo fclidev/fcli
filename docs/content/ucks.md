@@ -1,9 +1,18 @@
 ---
 title: Ucks
-summary: A uck is a unit of f functionality — a directory with an index.js that exports register(ctx). The store and the contract.
+summary: A home for all the ucks you don't give — a uck is a unit of f functionality, a directory with an index.js that exports register(ctx). The store and the contract.
 ---
 
 # Ucks
+
+This is what `f` is **for**: the small, unglamorous commands you already keep
+meaning to script. `f` is _how_ they run.
+
+A uck doesn't have to be good to be worth having. It has to answer when the
+model calls it — so most people's store fills up with things written in an
+evening to stop one specific annoyance. That collection is what `f` is a home
+for: **all the ucks you don't give** anyone else — the ones too small and too
+personal to ever become a project, arriving on your `PATH` as `f <name>`.
 
 A **uck** is a unit of `f` functionality. The builtins are ucks; extensions are
 ucks; `f config add ucks <source>` is the same mechanism pointed at a
@@ -50,7 +59,7 @@ export default { register };
 
 `register()` and `run()` receive the **same five keys**: `fVersion`,
 `contractVersion`, `self`, `ucks`, `registry`. Core builds both from one object
-shape, so they cannot drift apart. What differs is what is *in* them:
+shape, so they cannot drift apart. What differs is what is _in_ them:
 
 - At **register** time `ucks`/`registry` are a **partial view** — only the ucks
   that loaded before yours, and not your own name. Use it there for feature
@@ -74,7 +83,7 @@ export function register(_ctx) {
 `contractVersion` is an **interface** number, not a release number: `fVersion`
 (`"0.3.1"`) tells you which build of f is running, `contractVersion` (`1`) which
 contract it speaks. A uck written against contract 1 can branch on it at
-register time, before returning anything. It says nothing about a *peer's* release
+register time, before returning anything. It says nothing about a _peer's_ release
 cadence — feature-detect `credsApi`, `configApi` or a credential provider on its
 own surface, not on this number.
 

@@ -378,12 +378,24 @@ aside {
    would put two document titles in the outline and give every screen reader on
    the landing page an anchor-less duplicate. */
 .hero-title {
+  /* Two lines: block spans with a literal space *between the tags*. That space is
+     a text node of its own, so DOM textContent reads "tax for" while CSS
+     display:block still breaks the line — innerText and copy-paste get "tax\nfor",
+     and the space sits in the gap between boxes rather than wrapping a third line.
+     A plain <br> fixes neither textContent nor the run-together; no CSS can,
+     because concatenation without a separator is what textContent *is*. Spans are
+     block-level rather than a block inside <p>, which would render the same but is
+     not conforming HTML. */
+  display: block;
   font-size: clamp(2.1rem, 4.6vw, 3.15rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 700;
   margin: 0 0 0.9rem;
   text-wrap: balance;
+}
+.hero-title > span {
+  display: block;
 }
 
 .hero-tag {
@@ -716,9 +728,6 @@ body.has-hero .search {
   }
   .hero-title {
     font-size: 1.9rem;
-  }
-  .hero-title br {
-    display: none;
   }
   .hero-lede {
     font-size: 1.02rem;

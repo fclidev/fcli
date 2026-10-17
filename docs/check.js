@@ -79,6 +79,14 @@ function checkLinks() {
         fail(`${url}: no hashed ${need} asset reference`);
     }
     if (!/<title>[^<]+<\/title>/.test(html)) fail(`${url}: empty title`);
+    // `layout()` renders both <meta name="description"> and og:description from
+    // one `summary` argument. Dropping that argument from the call left both
+    // attributes empty on all 11 pages while every other check stayed green —
+    // search.json reads summary off a different path, so nothing else noticed.
+    if (!/<meta name="description" content="[^"]+"/.test(html))
+      fail(`${url}: empty meta description`);
+    if (!/<meta property="og:description" content="[^"]+"/.test(html))
+      fail(`${url}: empty og:description`);
   }
 }
 

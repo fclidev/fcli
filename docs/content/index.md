@@ -1,12 +1,11 @@
 ---
 page: home
 title: Overview
-summary: A home for all the ucks you don't give. A token-efficient CLI for LLMs - f bills per command, not per catalogue. Install it, then read the words underneath.
+summary: f is a token-efficient CLI for LLMs. Every tool you hand a model costs tokens before it uses one - f bills per command, not per catalogue. A home for the ucks lives on /ucks/.
 ---
 
 !!!hero
-<p class="hero-title">Stop paying token tax<br>for every tool call</p>
-<p class="hero-tag">A home for all the ucks you don’t give.</p>
+<span class="hero-title"><span>Stop paying token tax</span> <span>for every tool call</span></span>
 <p class="hero-lede">Every tool you give a model costs tokens <em>before</em> it
 uses one. <code>f</code> bills per command, not per catalogue.</p>
 <div class="install">
@@ -61,9 +60,8 @@ build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code
 
 # Home
 
-**A home for all the ucks you don't give.** `f` is a command line built to be
-read by an LLM. The whole interface is one line on your `PATH`, and a model
-discovers it by running it:
+`f` is a command line built to be read by an LLM. The whole interface is one
+line on your `PATH`, and a model discovers it by running it:
 
 ```sh
 f creds get prod.db
@@ -118,7 +116,8 @@ as two added words on a uck that already existed.
 ## What this is, in three words
 
 - **Ucks** — a unit of `f` functionality. Builtins are ucks, extensions are ucks,
-  `f creds` is a uck. [The contract →](/ucks/)
+  `f creds` is a uck. And what they are all for: [the ucks you don't give
+  →](/ucks/)
 - **The store** — `~/.f/ucks/<bucket>/`. Every uck `f` knows about, with
   provenance in the path: a git bucket *is* the clone, so you can `git blame` an
   installed command. [Inside the store →](/ucks/#the-store)
