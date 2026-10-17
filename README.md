@@ -7,25 +7,28 @@
 [![build](https://img.shields.io/github/actions/workflow/status/fclidev/fcli/docs.yml?event=push)](https://github.com/fclidev/fcli/actions/workflows/docs.yml)
 [![license](https://img.shields.io/github/license/fclidev/fcli)](LICENSE)
 
-**Stop paying token tax for every tool call.**
+**A command line interface for LLM agents.**
+
+`f` is a single executable on `PATH`. An agent learns its commands by running
+`f`, not from a declared tool schema, so nothing is paid until a command is
+invoked. An MCP tool definition costs ~80 tokens on *every* request whether the
+model calls it or not; `f help` lists every installed command once per session.
+
+Measured with `js-tiktoken` under `o200k_base` and `cl100k_base`, which agree on
+every figure:
+
+```
+f creds get prod.db            →      5 tokens, on invocation
+f help, first run (8 commands) →    161 tokens, once
+f help, 20 commands            →   ~600 tokens, once
+20 MCP tool definitions        → ~1,600 tokens, every request
+```
+
+A uck (f's word for a command) is a directory with an `index.js` that exports
+`register(ctx)`, so extending `f` is editing a file. Output is plain text: no
+colors, no banner, no completion message.
 
 *A [home for all the ucks you don't give](https://fcli.dev/ucks/).*
-
-`f` is a command line built to be read by an LLM. Every tool you hand a model
-costs tokens *before* it uses one — an MCP server with 20 tools puts ~1,440
-tokens of schema in front of the model on **every request**, used or not. `f` is
-just a command on your `PATH`; it only costs tokens when you actually use it:
-
-```
-f creds get prod.db     →  5 tokens
-f help                  →  260 tokens, once, for 20 commands
-same 20 tools as MCP    →  ~1,440 tokens, every request
-```
-
-Counted with `js-tiktoken` under `o200k_base` and `cl100k_base`, which agree on
-every number above. Short commands, terse output, no boilerplate — and a uck
-(f's word for a command) is a directory with an `index.js` in it, so extending
-it is editing a file.
 
 ```bash
 npm i -g @fcli.dev/f
@@ -326,9 +329,8 @@ No sandbox. No restrictions. Ucks are first-class.
 3. **npm-native** — extensions are packages, `npm i` to install
 4. **Full runtime** — no sandbox, ucks can do anything
 5. **Context injection** — ucks know what else is registered
-6. **Nothing re-sent** — the model discovers `f` by running it, so there is no
-   tool list sitting in the context of every request. This is the whole
-   argument; everything else is shape.
+6. **Nothing re-sent** — the model discovers `f` by running it, so no tool list
+   sits in the context of every request.
 
 ## Development
 

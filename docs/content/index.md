@@ -1,19 +1,17 @@
 ---
 page: home
 title: Overview
-summary: f is a token-efficient CLI for LLMs. Every tool you hand a model costs tokens before it uses one - f only costs tokens when you actually use it. A home for the ucks lives on /ucks/.
+summary: f is a command line interface for LLM agents. Commands are directories with an index.js, discovered by running f rather than declared in a tool schema. Lists what ships, how the store works, and how to extend it.
 ---
 
 !!!hero
-<span class="hero-title"><span>Stop paying token tax</span> <span>for every tool call</span></span>
-<p class="hero-lede">Every tool you give a model costs tokens <em>before</em> it
-uses one. <code>f</code> is a command on your PATH — it only costs tokens when you
-actually use it.</p>
+<span class="hero-title"><span>A command line interface</span> <span>for LLM agents</span></span>
+<p class="hero-lede"><code>f</code> puts a machine-readable CLI on your <code>PATH</code>. Commands are discovered by running <code>f</code>, not declared in a tool schema.</p>
 <div class="install">
   <pre><code id="install-cmd">npm i -g @fcli.dev/f</code></pre>
   <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy install command">Copy</button>
 </div>
-<div class="terminal" aria-label="A real f session">
+<div class="terminal" aria-label="Example f session">
   <div class="term-bar"><i></i><i></i><i></i><span>~/repo</span></div>
   <pre><code><span class="t-cmd">f</span>
 config  edit f.config.json via JSONPath (get/set/add/remove/list)
@@ -44,12 +42,12 @@ unlocked  8m12s left
 build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code></pre>
 </div>
 <div class="uck-wall" aria-label="Ucks from different sources, all answering as f">
-  <p class="uck-group"><span>the defaults</span><i>@fcli.dev/ucks, on first install</i></p>
+  <p class="uck-group"><span>defaults</span><i>@fcli.dev/ucks, installed on first run</i></p>
   <div class="uck-row"><code>f creds</code><span>store credentials, encrypted, with a TTL daemon</span></div>
   <div class="uck-row"><code>f skills</code><span>markdown instructions, loaded into context on demand</span></div>
   <div class="uck-row"><code>f config</code><span>edit f.config.json with JSONPath</span></div>
   <div class="uck-row"><code>f uck</code><span>push ucks from the store to a git repo</span></div>
-  <p class="uck-group"><span>someone else’s repo</span><i>added with one line of config</i></p>
+  <p class="uck-group"><span>additional sources</span><i>added in f.config.json</i></p>
   <div class="uck-row"><code>f fj</code><span>Forgejo/Gitea — all 491 endpoints of it</span></div>
   <div class="uck-row"><code>f gh</code><span>GitHub, via @octokit/rest</span></div>
   <div class="uck-row"><code>f ha</code><span>Home Assistant: states, scenes, automations</span></div>
@@ -61,80 +59,93 @@ build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code
 
 # Home
 
-Every tool you give a model costs tokens before it uses one. `f` is a command
-line built to be read by an LLM: the whole interface is one line on your `PATH`,
-and a model discovers it by running it:
+`f` is a command line interface for LLM agents. It is a single executable on
+`PATH`; an agent learns its commands by running `f`, not from a declared tool
+schema. Commands cost nothing until invoked — the listing is the only
+always-present cost.
 
 ```sh
 f creds get prod.db
 ```
 
-Run that and it costs **five tokens**. Counted, not estimated — `o200k_base` and
-`cl100k_base` agree. The equivalent MCP tool definition is **88 tokens**, and it
-gets paid on every request whether the model calls it or not. Multiply that by
-the number of tools, because the tool list is where the cost actually is:
+Token cost is measured with `js-tiktoken` under `o200k_base` and `cl100k_base`,
+which agree on every figure below.
 
-| What you wire up                      | What the model pays                    |
-| ------------------------------------- | -------------------------------------- |
-| An MCP server with 20 tools           | ~1,440 tokens, on every request        |
-| `f` with the same 20 things behind it | 260 once to list them, 4–10 to use one |
+| Cost                                  | Tokens              | When it is paid             |
+| ------------------------------------- | ------------------- | --------------------------- |
+| `f creds get prod.db`                 | 5                   | on invocation               |
+| One MCP tool definition               | ~80                 | on every request            |
+| `f help`, first run (8 commands)      | 161                 | once per session            |
+| A 20-command `f help` listing         | ~600                | once per session            |
+| An MCP server with 20 tool definitions| ~1,600              | on every request            |
 
-Both figures counted, not guessed. The schema side is 20 realistic definitions
-with descriptions and input schemas; the `f` side is what `f help` actually
-prints. That is **5.5×** for the same surface — and the schema cost recurs on
-every request, while the listing is paid once per session.
+The two per-unit rows are the load-bearing ones. An MCP definition is paid on
+every request whether or not the model calls it; `f help` is paid once and then
+leaves the context. Multiplying those per-unit figures gives the last two rows;
+the exact totals move with description length, so treat them as indicative.
 
 ## Why a CLI and not MCP
 
-**Nothing to host.** An MCP server is a process to install, configure, run, and
-keep alive — plus a tool-defs payload the model wades through on every request.
-`f` is one file on your `PATH`. No daemon, no handshake, no protocol version
+**No host process.** An MCP server is installed, configured, and kept running.
+`f` is one executable on `PATH`: no daemon, no handshake, no protocol version
 negotiation.
 
-**Discoverable in place.** The model finds out what `f` can do by running `f`,
-not by parsing a schema someone handed it. One terse line per command, no colors,
-no boilerplate, no "Done!" — and always current, because it is generated from
-what is actually installed rather than from a manifest that can drift.
+**Discovery at runtime.** `f help` lists every installed command, one line each.
+That output is generated from the store at invocation time, so it reflects what
+is actually installed rather than a manifest that can drift. Output is plain
+text: no colors, no banner, no completion message.
 
-**Extensible in seconds.** A command is a directory with an `index.js` in it.
-Drop it in the store, or `npm i` a package, and it answers on the next call. Full
-Node.js runtime — `child_process`, `fs`, `http`, the network. No sandbox, no
-manifest review, no restart.
+**Extension is a directory.** A command is a directory containing `index.js`.
+Adding it to the store, or `npm i`-ing a package, makes it available on the next
+invocation. Extensions run in the full Node.js runtime — `child_process`, `fs`,
+`http`, the network. There is no sandbox, no manifest review, and no restart.
 
-## An uck doesn't need to be perfect
+## Runtime and safety
 
-It just needs to answer when you call it. Most of what lives in a store got
-written in an afternoon to stop one specific annoyance — `f ha-ws` exists because
-Home Assistant's REST API cannot create an automation and returns a 404 when you
-try, so the uck drives the WebSocket API instead. It is not elegant. It answers.
+There is no sandbox. Code in the store executes with full process privileges: it
+can read credentials, files, and anything else the invoking user can reach. `f`
+does not vet ucks.
 
-That low bar is the reason `f` spreads at all. A tool you have to polish before
-you trust it never gets written; a tool you can finish in an evening and stop
-thinking about gets written every time something is mildly annoying. And when an
-uck turns out to matter, growing it is editing a file, not starting over — that
-is exactly the [`f fj` story](/recipes/), where a whole missing capability landed
-as two added words on a uck that already existed.
+Two mechanisms limit the blast radius, and neither is a sandbox:
 
-## What this is, in three words
+- Stored credentials expire. `f creds` holds values behind a TTL, after which a
+  lookup misses. It bounds how long a secret stays readable; it does not restrict
+  what running code can do.
+- Name collisions resolve by source order, not by trust. The later source wins —
+  project config is read after global, so a project uck overrides a same-named
+  default. Both copies stay installed; only one loads. See
+  [Shadowing](/ucks/#shadowing).
 
-- **Ucks** — a unit of `f` functionality. Builtins are ucks, extensions are ucks,
-  `f creds` is a uck. And what they are all for: [the ucks you don't give
-  →](/ucks/)
-- **The store** — `~/.f/ucks/<bucket>/`. Every uck `f` knows about, with
-  provenance in the path: a git bucket *is* the clone, so you can `git blame` an
-  installed command. [Inside the store →](/ucks/#the-store)
-- **Config** — `f.config.json`, global and project merged, listing uck sources
-  and skills. [Config →](/config/)
+Installing a source means trusting it: `f config add ucks <source>` accepts an
+arbitrary GitHub repo or npm package. See [Config](/config/).
 
-## Start here
+## Terms
 
-- [**Install**](/install/) — `npm i -g @fcli.dev/f`, then exactly what happens on
-  first run.
-- [**Quickstart**](/quickstart/) — run `f`, read its output, add your own uck in
-  under a minute.
-- [**Recipes**](/recipes/) — one real debugging session, before and after: the
-  workarounds an LLM invented around a gap, the two words added to an existing
-  uck to close it, and 6–8 tool round-trips becoming 2.
+- **Uck** — one unit of `f` functionality: a directory with an `index.js` that
+  exports `register(ctx)`. Builtins, extensions, and your own commands are all
+  ucks, differing only in which source installed them. Details: [Ucks](/ucks/).
+- **Store** — `~/.f/ucks/<bucket>/`. Every uck `f` has loaded. The bucket name is
+  part of the path, so a git-sourced uck sits in its own clone and `git blame`
+  works against installed commands. Layout: [The store](/ucks/#the-store).
+- **Config** — `f.config.json`, global and project scopes merged, listing uck
+  sources and skills. Format and keys: [Config](/config/).
+
+## Pages
+
+- [Install](/install/) — `npm i -g @fcli.dev/f`, and what the first run writes.
+- [Quickstart](/quickstart/) — read `f help`, add a uck, run it.
+- [Builtins](/builtins/) — every command present on a fresh install, one section
+  each.
+- [Ucks](/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
+- [Config](/config/) — source declarations, subset selection, skills.
+- [Credentials](/credentials/) — encrypted store, provider fall-through, miss
+  cache, packed files.
+- [Skills](/skills/) — markdown instruction files loaded into context on demand.
+- [Extend](/extend/) — writing and registering an extension package.
+- [Update](/update/) — `f up`, and `f uck push`.
+- [Recipes](/recipes/) — a worked example: a specific API gap, the wrapper's
+  behavior around it, and the change that closed it. Contains narrative; the
+  reference pages above are the specification.
 
 Source: [github.com/fclidev/fcli](https://github.com/fclidev/fcli) ·
 Default ucks: [github.com/fclidev/fcli-ucks](https://github.com/fclidev/fcli-ucks)

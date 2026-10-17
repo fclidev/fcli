@@ -1,12 +1,16 @@
 ---
 title: Recipes
-summary: A before/after. The f fj uck already talked to a Forgejo API — it just could not read CI logs. The LLM worked around that with Python; then the uck got two words and the workarounds went away.
+summary: Worked example. The Forgejo Actions log endpoint returns a zip, not JSON, so a JSON-printing wrapper cannot surface logs. What an agent did around that, and what f fj runs and joblogs do now. Contains narrative; the reference pages are the specification.
 ---
 
 # Recipes
 
-What `f` changes for the LLM, not just for you. This is a real session: an
-agent debugging a red Forgejo Actions run on a monorepo.
+**This page is a worked example, not a specification.** It narrates one real
+debugging session to show a concrete failure mode and the change that closed it.
+The reference pages describe behavior; this one shows it in context.
+
+The pattern under test: an upstream API that returns a binary payload where a
+wrapper assumes JSON, and what an agent does to work around the gap.
 
 ## Background
 

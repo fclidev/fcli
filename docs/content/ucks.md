@@ -1,24 +1,19 @@
 ---
 title: Ucks
-summary: A home for all the ucks you don't give — a uck is a unit of f functionality, a directory with an index.js that exports register(ctx). The store and the contract.
+summary: A uck is a unit of f functionality - a directory with an index.js exporting register(ctx). The contract, the ctx shape, the store layout at ~/.f/ucks, and shadowing order.
 ---
 
 # Ucks
 
-This is what `f` is **for**: the small, unglamorous commands you already keep
-meaning to script. `f` is _how_ they run.
+A home for all the ucks you don't give — the small commands too specific to
+become a project and too useful to leave unscripted. `f` is where they live and
+how they run; this page is the contract they satisfy.
 
-A uck doesn't have to be good to be worth having. It has to answer when the
-model calls it — so most people's store fills up with things written in an
-evening to stop one specific annoyance. That collection is what `f` is a home
-for: **all the ucks you don't give** anyone else — the ones too small and too
-personal to ever become a project, arriving on your `PATH` as `f <name>`.
+A uck is a unit of `f` functionality. The builtins are ucks; extensions are
+ucks; `f config add ucks <source>` is the same mechanism pointed at a different
+source. An uck is only a word when prefixed with `f-`.
 
-A **uck** is a unit of `f` functionality. The builtins are ucks; extensions are
-ucks; `f config add ucks <source>` is the same mechanism pointed at a
-different source. An uck is only a word when prefixed with `f-`.
-
-What ships on a fresh install is on the [Builtins](/builtins/) page.
+What ships on a fresh install is listed on the [Builtins](/builtins/) page.
 
 A uck is a **directory** containing an `index.js` (plus any supporting files).
 The `index.js` exports a `register(ctx)` function.
