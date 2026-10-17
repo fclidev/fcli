@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadStoreUcks, loadFromNodeModules } from "./registry.js";
+import { loadStoreUcks, loadFromNodeModules, snapshot } from "./registry.js";
 import { ensureGlobalConfig, allSources } from "./config.js";
 import { installSource, installedUcks } from "./store.js";
 import { updateAll } from "./update.js";
 import { help } from "./help.js";
-import { type Uck, type UckRunContext } from "./types.js";
+import { type Uck, type UckRunContext, CONTRACT_VERSION } from "./types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -64,7 +64,8 @@ export async function run(argv: string[]): Promise<void> {
   for (const src of allSources()) {
     const specifier = typeof src === "string" ? src : src.source;
     if (specifierIsGit(specifier) || looksLocal(specifier)) continue;
-    for (const u of await loadFromNodeModules(specifier, fVersion)) {
+    // npm sources load last, so their register() sees the whole store.
+    for (const u of await loadFromNodeModules(specifier, fVersion, snapshot(Object.values(ucks)))) {
       if (ucks[u.name]) console.error(`f: uck '${u.name}' shadowed by npm:${specifier}`);
       ucks[u.name] = u; // later (project) sources override store/builtins
       origin[u.name] = `npm:${specifier}`;
@@ -111,12 +112,16 @@ export async function run(argv: string[]): Promise<void> {
     const registry = ucks;
     const ctx: UckRunContext = {
       fVersion,
+      contractVersion: CONTRACT_VERSION,
       ucks: uckList,
       self: name,
+      // G4, resolved: `registry` is the sole peer accessor (CONTRACT.md N20).
+      // `ctx.uck(name)` — 0.3.0's sugar over this same map — is deleted: it was
+      // the subset of a lookup that is also unreachable below run(), and 5 of 6
+      // in-tree call sites already used `registry`. Deleting the key fails loud
+      // (`ctx.uck is not a function`) instead of silently degrading a peer read
+      // to a socket fallback that reports "no-store" as "not configured".
       registry,
-      // G4: sanctioned peer accessor. `registry` stays as a read-only alias
-      // through 0.x and is removed at 1.0.
-      uck: (n: string) => registry[n],
     };
     // G3: a numeric return maps to process.exitCode; undefined → 0.
     const result = await uck.run(rest, uck.argv?.(rest) ?? { _: rest }, ctx);

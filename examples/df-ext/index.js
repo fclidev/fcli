@@ -1,9 +1,11 @@
 import { execSync } from "node:child_process";
 
-// register(ctx) runs at LOAD time: ctx only has { fVersion, self }.
-// The full uck list (ctx.ucks) and cross-uck registry (ctx.registry) are only
-// available at RUN time, as the 3rd arg to run(). A uck can't read other ucks
-// during register() — so any "do I see uck X?" logic belongs in run(), not here.
+// register(ctx) runs at LOAD time and gets the SAME ctx shape as run()
+// ({ fVersion, contractVersion, self, ucks, registry }) — but ucks/registry are
+// a PARTIAL view of whatever has already loaded, so use them only for feature
+// detection ("creds" in ctx.registry), never to conclude a peer is absent.
+// The authoritative peer lookup is ctx.registry in run(), the 3rd arg, where the
+// view is complete. ctx.uck(name) is gone; ctx.registry is the only accessor.
 export function register(_ctx) {
   return {
     name: "df",

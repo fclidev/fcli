@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { clampDesc, satisfiesMinF, type Uck, type UckContext, type UckModule, type UckSource } from "./types.js";
-import { resolvedUcks } from "./store.js";
+import { clampDesc, satisfiesMinF, CONTRACT_VERSION, type Uck, type UckContext, type UckModule, type UckSource } from "./types.js";
+import { installedUcks, resolvedUcks } from "./store.js";
 
 const require = createRequire(import.meta.url);
 
@@ -32,22 +32,42 @@ function toImportUrl(entry: string): string {
 
 /** Load every uck in the store, in stable load order. Later buckets shadow earlier ones.
  *
- * `originOf(name)` reports where a store uck came from (its bucket name) for
- * collision warnings. */
+ * Load is one accumulating pass: each module's register() sees the ucks loaded
+ * before it in `ctx.ucks`/`ctx.registry` (a partial view — CONTRACT.md N20a),
+ * and the caller merges npm sources on top afterwards. */
 export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
-  const ucks = resolvedUcks();
+  // Iterate the discovered entries directly, in load order. resolvedUcks() keys
+  // by DIRECTORY basename, which is not the same thing as a registered uck name
+  // (a local source is flattened, so its ucks sit at <store>/<uck>/ while the
+  // label is the parent) — keying the loop by registered name makes that
+  // mismatch a silent miss. Iterating entries keeps dir and name paired, which
+  // is the invariant the loader actually needs.
   const results: Uck[] = [];
 
-  for (const name of Object.keys(ucks).sort()) {
-    const dir = ucks[name].dir;
-    const indexPath = join(dir, "index.js");
+  for (const entry of installedUcks()) {
+    const indexPath = join(entry.dir, "index.js");
     if (!existsSync(indexPath)) continue;
 
-    const results2 = await loadUckModule(indexPath, name, fVersion, `store:${name}`);
-    results.push(...results2);
+    const loaded = await loadUckModule(indexPath, entry.name, fVersion, `store:${entry.bucket}`, snapshot(results));
+    results.push(...loaded);
   }
 
   return results;
+}
+
+export interface UckView {
+  ucks: { name: string; desc: string }[];
+  registry: Record<string, Uck>;
+}
+
+/** The partial `ucks`/`registry` view handed to one register() call. */
+export function snapshot(loaded: Uck[]): UckView {
+  const registry: Record<string, Uck> = {};
+  for (const u of loaded) registry[u.name] = u;
+  return {
+    ucks: loaded.map((u) => ({ name: u.name, desc: u.desc })),
+    registry,
+  };
 }
 
 /**
@@ -60,7 +80,8 @@ export async function loadUckModule(
   indexPath: string,
   self: string,
   fVersion: string,
-  origin: string
+  origin: string,
+  view: UckView = { ucks: [], registry: {} }
 ): Promise<Uck[]> {
   let mod: UckModule;
   try {
@@ -76,7 +97,9 @@ export async function loadUckModule(
     return [];
   }
 
-  const ctx: UckContext = { fVersion, self };
+  // G4: one ctx shape. register() gets the same keys as run(), with
+  // ucks/registry holding whatever has loaded so far (CONTRACT.md N20a).
+  const ctx: UckContext = { fVersion, contractVersion: CONTRACT_VERSION, self, ucks: view.ucks, registry: view.registry };
   let newUcks: Uck[] | Uck;
   try {
     newUcks = mod.register(ctx);
@@ -116,7 +139,11 @@ export async function loadUckModule(
  * Load ucks from an npm/git source that is already installed in node_modules
  * (not in the store). Used for sources that resolve via the package system.
  */
-export async function loadFromNodeModules(specifier: string, fVersion: string): Promise<Uck[]> {
+export async function loadFromNodeModules(
+  specifier: string,
+  fVersion: string,
+  view: UckView = { ucks: [], registry: {} }
+): Promise<Uck[]> {
   let resolved: string;
   try {
     resolved = require.resolve(specifier);
@@ -125,5 +152,5 @@ export async function loadFromNodeModules(specifier: string, fVersion: string): 
     return [];
   }
   const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
-  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`);
+  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`, view);
 }

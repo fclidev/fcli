@@ -6,6 +6,30 @@ export interface UckArgs {
 /** Hard cap on desc length in f help / ctx.ucks. Longer values are truncated with '…'. */
 export const DESC_MAX = 120;
 
+/**
+ * The f <-> uck contract version (CONTRACT.md). ONE number answering "does this
+ * bucket speak this core's language" — the alternative was the three ad-hoc
+ * dials already in the tree (`uck.minF`, `credsApi.version`,
+ * `credentialProvider.providerVersion`), which answer three different
+ * questions and never this one.
+ *
+ * Bumped ONLY when the meaning of an existing ctx/uck field changes for code
+ * that is already written. Purely additive fields (a new optional uck key, a
+ * new optional credentialProvider key) do NOT bump it: `"field" in ctx` and
+ * `typeof x === "function"` already cover those, and bumping on addition would
+ * make every uck author declare a version for nothing.
+ *
+ *   1 — the CONTRACT.md baseline as implemented in core 0.3.x, plus the G4
+ *       reversal: one ctx shape at register + run time, and `ctx.registry` as
+ *       the sole peer accessor (`ctx.uck()` deleted).
+ *
+ * Available to a uck at **register** time as `ctx.contractVersion`, so it can
+ * branch before returning anything. Peers that expose their own versioned
+ * surface should still feature-detect that separately — a core contract version
+ * says nothing about a uck's release cadence.
+ */
+export const CONTRACT_VERSION = 1;
+
 /** A unit of f functionality. Only a word when prefixed with 'f-'. */
 export interface Uck {
   name: string;
@@ -36,31 +60,49 @@ export interface Uck {
   [key: string]: unknown;
 }
 
-/** Context passed to a uck's register() — load time, before any ucks exist. */
+/**
+ * Context passed to a uck's register(). Identical keys to UckRunContext — one
+ * shape, not two (G4). `ucks`/`registry` are a **partial view** here: imports
+ * proceed in store order and register() runs during that walk, so only ucks
+ * loaded before yours are present. Use them at register time for *feature
+ * detection* (`"creds" in ctx.registry`), never for an authoritative peer
+ * lookup — do that in run(), where the view is complete.
+ */
 export interface UckContext {
   /** f's own version string */
   fVersion: string;
-  /** This uck's name */
+  /** The f <-> uck contract version this core implements. See CONTRACT_VERSION. */
+  contractVersion: number;
+  /**
+   * This uck's **registered name** — i.e. what `f <self>` invokes. A name,
+   * NOT a filesystem path or a source label: derive a path from
+   * `import.meta.url`, never from this. (For a directory registering several
+   * ucks it is only correct for one, which is why core enforces one per dir.)
+   */
   self: string;
+  /** name + desc of every uck loaded SO FAR (complete at run time). */
+  ucks: { name: string; desc: string }[];
+  /**
+   * name -> the complete object a uck returned from register().
+   * The **sole** sanctioned peer accessor (CONTRACT.md N20). Read-only by
+   * convention: do not mutate, add keys to, or delete from it.
+   *
+   * Everything on ctx, including this, must stay structured-cloneable —
+   * credential providers are spawned as child processes (CONTRACT.md N20b).
+   */
+  registry: Record<string, Uck>;
 }
 
 /**
  * Context passed to a uck's run() — after every uck is loaded. A uck can
  * read any field (e.g. `skills`) exported by other ucks off the registry.
  * Core imposes no restrictions on what a uck exports.
+ *
+ * Same shape as UckContext; the difference is only that `ucks`/`registry` are
+ * now complete. `ctx` is rebuilt per invocation, so nothing captured from an
+ * earlier run can go stale.
  */
-export interface UckRunContext extends UckContext {
-  /** name + desc of every uck (store + npm sources). */
-  ucks: { name: string; desc: string }[];
-  /** name -> the complete object a uck returned from register(). Read-only alias through 0.x; removed at 1.0. */
-  registry: Record<string, Uck>;
-  /**
-   * Look up another uck's registered object by name. The sanctioned peer
-   * accessor (replaces direct `ctx.registry.<name>.<api>` duck-typing).
-   * Returns undefined when the peer uck is not installed.
-   */
-  uck: (name: string) => Uck | undefined;
-}
+export type UckRunContext = UckContext;
 
 /** What a uck module (index.js) exports */
 export interface UckModule {
