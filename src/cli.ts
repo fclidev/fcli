@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadStoreUcks, loadFromNodeModules, snapshot, sourceKind } from "./registry.js";
-import { ensureGlobalConfig, allSources } from "./config.js";
+import { loadStoreUcks, loadFromNodeModules, loadFromNodeModulesMaybe, snapshot, sourceKind } from "./registry.js";
+import { ensureGlobalConfig, migrateLegacyDefaults, allSources } from "./config.js";
 import { installSource, installedUcks } from "./store.js";
 import { acquireStoreLock } from "./lock.js";
 import { updateAll } from "./update.js";
@@ -38,6 +38,8 @@ export async function run(argv: string[]): Promise<void> {
 
   // First install: seed the global config with defaults (idempotent).
   ensureGlobalConfig();
+  // Existing installs: point a legacy git defaults source at the npm package.
+  migrateLegacyDefaults();
 
   // Populate the store from configured sources. Normal runs only fetch when the
   // store is empty (first install); `f up` forces re-fetch. Local ucks always
@@ -59,7 +61,10 @@ export async function run(argv: string[]): Promise<void> {
     }
   }
 
-  // Load ucks: from the store, then from any npm sources in node_modules.
+  // Load ucks from the store. Git and npm sources both install into store
+  // buckets, so loadStoreUcks covers both; the legacy node_modules path (an
+  // npm source resolved through require.resolve, for installs predating store
+  // installs of npm sources) still runs after the store so its ucks shadow.
   const ucks: Record<string, Uck> = {};
   // Where each name currently comes from — for the shadowing warning (G9).
   const origin: Record<string, string> = {};
@@ -71,12 +76,14 @@ export async function run(argv: string[]): Promise<void> {
   }
   for (const src of allSources()) {
     const specifier = typeof src === "string" ? src : src.source;
-    if (specifierIsGit(specifier) || looksLocal(specifier)) continue;
-    // npm sources load last, so their register() sees the whole store.
-    for (const u of await loadFromNodeModules(specifier, fVersion, snapshot(Object.values(ucks)))) {
-      if (ucks[u.name]) console.error(`f: uck '${u.name}' shadowed by npm:${specifier}`);
-      ucks[u.name] = u; // later (project) sources override store/builtins
-      origin[u.name] = `npm:${specifier}`;
+    if (sourceKind(specifier) !== "npm") continue;
+    // Legacy npm sources (pre-store-install) live in a surrounding
+    // node_modules; skip silently if they never resolved there.
+    const u = await loadFromNodeModulesMaybe(specifier, fVersion, snapshot(Object.values(ucks)));
+    for (const uck of u) {
+      if (ucks[uck.name]) console.error(`f: uck '${uck.name}' shadowed by npm:${specifier}`);
+      ucks[uck.name] = uck; // later (project) sources override store/builtins
+      origin[uck.name] = `npm:${specifier}`;
     }
   }
 

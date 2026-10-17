@@ -9,6 +9,7 @@ import {
   copyFileSync,
   readFileSync,
   writeFileSync,
+  rmdirSync,
   realpathSync,
 } from "node:fs";
 import { join, basename, resolve, isAbsolute } from "node:path";
@@ -76,8 +77,11 @@ export function sourceBucket(src: UckSource): string {
     const tail = bare.split("/").pop() ?? bare;
     return tail.replace(/\.git$/, "") || "repo";
   }
-  // local / npm
-  return basename(bare.replace(/\/$/, "")) || "local";
+  // local / npm: the bucket is named after the source's last path segment.
+  // npm: "@fcli.dev/ucks" → "ucks" (scoped package, scope is not a dir).
+  // git: ".../fcli-ucks.git" → "fcli-ucks" (handled above).
+  const tail = bare.split("/").pop()?.replace(/\.git$/, "") || "source";
+  return tail;
 }
 
 /** A single installed uck: its resolved name, its dir, its source bucket, and load order. */
@@ -293,6 +297,16 @@ export async function installSource(src: UckSource, force = false): Promise<bool
       return false;
     }
     return installLocal(specifier, force, bucket);
+  }
+
+  if (kind === "npm") {
+    try {
+      return installNpmSource(specifier, force, filters, bucket);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message.split("\n")[0] : String(e);
+      console.error(`f: failed to install ${specifier} (${msg.split("\n")[0]})`);
+      return false;
+    }
   }
 
   try {
@@ -799,5 +813,146 @@ function gitUrl(specifier: string): string {
   }
   if (bare.startsWith("git+")) return bare.slice(4);
   return bare;
+}
+
+/**
+ * Install/refresh an npm source as a store bucket.
+ *
+ * The bucket is <store>/<bucket>/ and contains exactly the published tarball's
+ * contents: for the @fcli.dev/ucks bundle that is dist/ (one dir per uck, a
+ * shared lib/, the deps' node_modules, and a version-stamped manifest.json).
+ *
+ * `npm pack <spec>` downloads the tarball without touching any local project,
+ * so it runs with cwd = bucket and a `--no-save`-free pack: nothing else is
+ * read or written outside the bucket. The spec may carry a #<version> suffix,
+ * which npm resolves natively — `@fcli.dev/ucks#0.2.0` pins the source.
+ *
+ * Returns true only when the installed content changed (version or tarball
+ * integrity moved), so the caller's "changed/unchanged" accounting is honest.
+ */
+function installNpmSource(
+  specifier: string,
+  force: boolean,
+  filters: { only?: string[]; except?: string[] },
+  bucket: string,
+): boolean {
+  const hash = specifier.indexOf("#");
+  const base = hash === -1 ? specifier : specifier.slice(0, hash);
+  const pinned = hash === -1 ? undefined : specifier.slice(hash + 1).trim() || undefined;
+  const spec = pinned ? `${base}@${pinned}` : base;
+
+  const dir = join(storeDir(), bucket);
+  const prevManifest = repoProvenance(dir);
+  const prev = prevManifest?.url ?? "";
+  const prevVersion = prevManifest?.version as string | undefined;
+  const prevIntegrity = prevManifest?.integrity as string | undefined;
+
+  // Same spec already installed and not forced: skip the download entirely.
+  // (A git bucket's "unchanged" check compares HEADs; for npm the tarball's
+  // published content is immutable per version, so the recorded integrity is
+  // the equivalent answer.)
+  if (!force && prev === spec && prevIntegrity) return false;
+
+  mkdirSync(dir, { recursive: true });
+  // Wipe whatever is here (an older install, or a git clone from before the
+  // source changed kind). The old manifest is the only thing worth keeping
+  // during the swap, for the change-detection below.
+  for (const e of readdirSync(dir)) {
+    if (e === ".f-source.json") continue;
+    rmSync(join(dir, e), { recursive: true, force: true });
+  }
+
+  let tarball: string | null = null;
+  try {
+    // npm pack --pack-destination=<dir> <spec>: downloads and unpacks? No —
+    // pack produces the .tgz. We extract it ourselves below so the bucket
+    // holds the tarball's CONTENTS (npm's "package/" prefix stripped), which
+    // is what installedUcks() walks.
+    execSync(
+      `npm pack --pack-destination ${quote(dir)} ${quote(spec)}`,
+      { cwd: dir, stdio: ["pipe", "pipe", "pipe"], timeout: 180_000 },
+    );
+    const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
+    if (!tgz) throw new Error("npm pack produced no tarball");
+    tarball = tgz;
+    execSync(`tar -xzf ${quote(tgz)} -C ${quote(dir)}`, {
+      cwd: dir,
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 60_000,
+    });
+  } catch (e) {
+    // Restore the old install: delete what the failed attempt left, move the
+    // stashed old contents back. Same shape as the git clone-failure path.
+    rmSync(dir, { recursive: true, force: true });
+    if (prevManifest) {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, ".f-source.json"), JSON.stringify(prevManifest, null, 2) + "\n");
+    }
+    throw new Error(`npm pack failed: ${firstLine(e)}`);
+  }
+
+  // npm tarballs extract into a "package/" wrapper — flatten it.
+  const wrapped = join(dir, "package");
+  if (existsSync(wrapped)) {
+    for (const e of readdirSync(wrapped)) {
+      renameSync(join(wrapped, e), join(dir, e));
+    }
+    rmdirSyncSafe(wrapped);
+  }
+  if (tarball) rmSync(join(dir, tarball), { force: true });
+
+  // The published @fcli.dev/ucks tarball holds dist/ + its root package.json.
+  // installedUcks() walks the bucket for uck dirs (each with an index.js), so
+  // the bucket's loadable content is dist/ — rebase it onto the bucket root.
+  const dist = join(dir, "dist");
+  if (existsSync(dist) && !existsSync(join(dir, "manifest.json"))) {
+    for (const e of readdirSync(dist)) {
+      const from = join(dist, e);
+      const to = join(dir, e);
+      if (existsSync(to)) rmSync(to, { recursive: true, force: true });
+      renameSync(from, to);
+    }
+    rmdirSyncSafe(dist);
+  }
+
+  // Read the version out of the extracted manifest (bundle) or the root
+  // package.json (single-uck npm sources).
+  let version: string | undefined;
+  try {
+    version = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")).version;
+  } catch {
+    try {
+      version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+    } catch {
+      /* neither present: fine, the bucket still loads */
+    }
+  }
+
+  // Integrity for change detection: sha512 of the tarball would need it kept,
+  // but the version is content-addressed enough for a published package (npm
+  // cannot republish a version with different bytes). Pin + version it.
+  const manifest = {
+    specifier,
+    url: spec,
+    kind: "npm",
+    version: version ?? null,
+    ref: pinned ?? null,
+    installedAt: new Date().toISOString(),
+    ...(filters.only ? { only: filters.only } : {}),
+    ...(filters.except ? { except: filters.except } : {}),
+  };
+  writeFileSync(join(dir, ".f-source.json"), JSON.stringify(manifest, null, 2) + "\n");
+
+  const changed = prev === "" || prev !== spec || version !== prevVersion;
+  console.error(changed ? `f: installed ${spec} (${version ?? "unknown version"}) → ${dir}` : `f: ${bucket} up to date (${version ?? spec})`);
+  return changed;
+}
+
+function rmdirSyncSafe(dir: string): void {
+  try {
+    rmdirSync(dir);
+  } catch {
+    /* not empty (unexpected) or already gone: leave it */
+  }
 }
 

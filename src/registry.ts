@@ -160,3 +160,27 @@ export async function loadFromNodeModules(
   const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
   return loadUckModule(resolved, name, fVersion, `npm:${specifier}`, view);
 }
+
+/**
+ * Like loadFromNodeModules, but silent when the specifier simply does not
+ * resolve: npm sources now install into store buckets (so the package is NOT
+ * in a surrounding node_modules by design), and the legacy node_modules path
+ * should only fire for pre-store installs. Distinguishing "not installed
+ * here" from "installed but broken" without a warning would require knowing
+ * which; the caller only invokes this for npm sources, and a store bucket
+ * already loaded the uck in that case, so silence is the right call.
+ */
+export async function loadFromNodeModulesMaybe(
+  specifier: string,
+  fVersion: string,
+  view: UckView = { ucks: [], registry: {} }
+): Promise<Uck[]> {
+  let resolved: string;
+  try {
+    resolved = require.resolve(specifier);
+  } catch {
+    return [];
+  }
+  const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
+  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`, view);
+}

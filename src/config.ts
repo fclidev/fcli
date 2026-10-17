@@ -2,9 +2,15 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { FConfig, UckSource } from "./types.js";
 
-/** The defaults repo — seeded into the global config on first install. */
+/**
+ * The default ucks source, seeded into the global config on first install.
+ * An npm package: `f` installs it into the store like any other source and
+ * loads the ucks from its dist/ via manifest.json. Override with
+ * F_UCKS_REPO to a git URL (or the package name of another npm source) —
+ * the git flow (clone / reset --hard on `f up`) is unchanged.
+ */
 export const DEFAULTS_REPO =
-  process.env.F_UCKS_REPO ?? "https://github.com/fclidev/fcli-ucks.git";
+  process.env.F_UCKS_REPO ?? "@fcli.dev/ucks";
 
 export function fHome(): string {
   return join(process.env.HOME ?? "", ".f");
@@ -43,7 +49,7 @@ export function readConfigFile(path: string): FConfig | null {
 
 /**
  * First install: if the global config doesn't exist, seed it with the defaults
- * repo as a source. Idempotent — never clobbers an existing config.
+ * source as a source. Idempotent — never clobbers an existing config.
  */
 export function ensureGlobalConfig(): void {
   const p = globalConfigPath();
@@ -54,6 +60,36 @@ export function ensureGlobalConfig(): void {
     writeFileSync(p, JSON.stringify(seed, null, 2) + "\n");
   } catch (e) {
     console.error(`f: could not seed ${p}: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+/**
+ * Migrate existing installs: a global config seeded with the old git defaults
+ * repo is rewritten to the npm source. Only the exact string we used to seed
+ * is touched, so a user who pointed F_UCKS_REPO elsewhere (or edited the URL)
+ * is left alone. Idempotent — once migrated the string no longer matches.
+ */
+const LEGACY_DEFAULTS_REPO = "https://github.com/fclidev/fcli-ucks.git";
+export function migrateLegacyDefaults(): void {
+  const p = globalConfigPath();
+  if (!existsSync(p)) return;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(p, "utf8"));
+  } catch {
+    return; // invalid config: leave it for readConfig to complain about
+  }
+  const sources = (raw as { ucks?: unknown; extensions?: unknown }).ucks ??
+    (raw as { extensions?: unknown }).extensions;
+  if (!Array.isArray(sources)) return;
+  const idx = sources.indexOf(LEGACY_DEFAULTS_REPO);
+  if (idx === -1) return;
+  sources[idx] = DEFAULTS_REPO;
+  try {
+    writeFileSync(p, JSON.stringify(raw, null, 2) + "\n");
+    console.error(`f: ucks source migrated: ${LEGACY_DEFAULTS_REPO} → ${DEFAULTS_REPO}`);
+  } catch {
+    /* read-only config: the old source still works (it's just git) */
   }
 }
 
