@@ -1,6 +1,48 @@
 # f
 
-Token-efficient CLI for LLMs. Short ucks, minimal output, extensible via npm packages.
+**Stop paying token tax for every tool call.**
+
+`f` is a command line built to be read by an LLM. Every tool you hand a model
+costs tokens *before* it uses one — an MCP server with 20 tools puts ~1,440
+tokens of schema in front of the model on **every request**, used or not. `f`
+bills per command, not per catalogue:
+
+```
+f creds get prod.db     →  5 tokens
+f help                  →  260 tokens, once, for 20 commands
+same 20 tools as MCP    →  ~1,440 tokens, every request
+```
+
+Counted with `js-tiktoken` under `o200k_base` and `cl100k_base`, which agree on
+every number above. Short commands, terse output, no boilerplate — and a uck
+(f's word for a command) is a directory with an `index.js` in it, so extending
+it is editing a file.
+
+```bash
+npm i -g @fcli.dev/f
+```
+
+What it looks like from the inside:
+
+```console
+$ f
+config  edit f.config.json via JSONPath (get/set/add/remove/list)
+creds   store credentials (scrypt+AES-GCM, daemon+socket, ttl)
+fj      Forgejo/Gitea API (ls/call/<METHOD> <path>)
+ls      list files (terse, one per line)
+uck     push store ucks to a git repo (bucket name = target name)
+v       print f version
+
+$ f fj runs newest
+3774  success  pull_request  fec3afa9  #1291  9m
+3773  failure  pull_request  58eb1186  #1291  9m
+
+$ f fj joblogs 3773 "--- FAIL"
+build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)
+```
+
+Docs: [fcli.dev](https://fcli.dev) · Why not MCP:
+[fcli.dev/#why-a-cli-and-not-mcp](https://fcli.dev/#why-a-cli-and-not-mcp)
 
 ## Install
 
@@ -20,8 +62,6 @@ npm link     # puts the `f` command on your PATH (dev install)
 ```
 
 Uninstall a dev install: `npm unlink -g f` (run from the clone) or `npm unlink f`.
-
-A one-line `curl … | sh` bootstrap is coming.
 
 ## Usage
 
@@ -277,6 +317,8 @@ No sandbox. No restrictions. Ucks are first-class.
 3. **npm-native** — extensions are packages, `npm i` to install
 4. **Full runtime** — no sandbox, ucks can do anything
 5. **Context injection** — ucks know what else is registered
+6. **No catalogue** — the model discovers `f` by running it, so nothing is
+   re-sent per request. This is the whole argument; everything else is shape.
 
 ## Development
 

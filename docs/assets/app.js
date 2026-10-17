@@ -15,16 +15,61 @@ if (toggle) {
   });
 }
 
+// Copy buttons: only wired up once a handler can actually be attached, so with
+// JS off the command is still visible and selectable and the button stays hidden
+// (see body.has-copy) — the button is never the only way to get the text.
+const copyButtons = [...root.querySelectorAll("[data-copy]")];
+if (copyButtons.length) root.classList.add("has-copy");
+for (const btn of copyButtons) {
+  const target = document.querySelector(btn.dataset.copy);
+  if (!target) {
+    btn.remove();
+    continue;
+  }
+  btn.addEventListener("click", async () => {
+    const text = target.textContent.trim();
+    let ok = true;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard API needs a secure context; fall back to a throwaway selection
+      // so the copy still works over http:// on a preview server.
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      root.appendChild(ta);
+      ta.select();
+      try {
+        ok = document.execCommand("copy");
+      } catch {
+        ok = false;
+      }
+      ta.remove();
+    }
+    btn.dataset.done = ok ? "1" : "0";
+    btn.textContent = ok ? "Copied" : "Press ⌘C";
+    setTimeout(() => {
+      delete btn.dataset.done;
+      btn.textContent = "Copy";
+    }, 1600);
+  });
+}
+
 const tocLinks = [...root.querySelectorAll(".toc a")];
 if (tocLinks.length && "IntersectionObserver" in window) {
-  const targets = tocLinks.map((a) => document.getElementById(a.hash.slice(1))).filter(Boolean);
+  const targets = tocLinks
+    .map((a) => document.getElementById(a.hash.slice(1)))
+    .filter(Boolean);
   const setActive = (id) =>
     tocLinks.forEach((a) => a.classList.toggle("current", a.hash === `#${id}`));
   const visible = new Set();
   const spy = new IntersectionObserver(
     (entries) => {
       for (const e of entries)
-        e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id);
+        e.isIntersecting
+          ? visible.add(e.target.id)
+          : visible.delete(e.target.id);
       const first = targets.find((t) => visible.has(t.id));
       if (first) setActive(first.id);
     },
@@ -54,7 +99,9 @@ if (searchBox) {
 
   function relativeBase() {
     const el = document.querySelector(".sidebar a[href]");
-    const href = el ? new URL(el.getAttribute("href"), document.baseURI).pathname : "/";
+    const href = el
+      ? new URL(el.getAttribute("href"), document.baseURI).pathname
+      : "/";
     return href.replace(/[^/]*$/, "");
   }
 
@@ -73,7 +120,19 @@ if (searchBox) {
   mount.className = "search";
   mount.innerHTML = `<input type="search" placeholder="Search the docs…" aria-label="Search the docs">
 <div id="search-results" aria-live="polite"></div>`;
-  searchBox.parentNode.insertBefore(mount, searchBox);
+  // A page with a hero has its title up there, so its first <h1> is a section
+  // heading and search belongs above everything. Otherwise the h1 is the page
+  // title and search goes straight under it. Keyed on the hero rather than on
+  // .home so any page can grow one. Inserted after the menu button to keep the
+  // toggle the first tab stop.
+  if (root.classList.contains("has-hero")) {
+    const main = document.getElementById("main");
+    const menu = main.querySelector(".menu");
+    if (menu) menu.after(mount);
+    else main.prepend(mount);
+  } else {
+    searchBox.parentNode.insertBefore(mount, searchBox);
+  }
 
   const input = mount.querySelector("input");
   const results = mount.querySelector("#search-results");

@@ -166,7 +166,7 @@ const NAV = [
   {
     title: "Start",
     items: [
-      ["index", "Overview"],
+      ["index", "Home"],
       ["install", "Install"],
       ["quickstart", "Quickstart"],
     ],
@@ -212,12 +212,51 @@ ${sections}
 </nav>`;
 }
 
+// The homepage hero is raw HTML, so it cannot live in markdown: pages are built
+// with markdown-it `html: false` on purpose, so a content file cannot smuggle
+// markup past the layout. Rather than flip that switch site wide open, the hero
+// is a fenced block lifted out by build.js and injected as a slot of its own.
+//
+// The fence is `!!!hero`, not a `hero:` frontmatter key, because a markdown
+// body cannot be a YAML block scalar and stay honest about it. A `hero: |`
+// scalar's indentation is set by its first line, and the terminal transcript in
+// the hero deliberately contains column-0 lines (`config  edit f.config.json…`)
+// that a spec-correct YAML parser would read as the end of the scalar. Any
+// indentation-based reading of this content is wrong; a fence with an explicit
+// terminator makes the column-0 lines correct by construction.
+//
+// Two consequences worth knowing:
+//   - The hero is trusted input, same status as build.js itself. It is read once
+//     at build time and never echoed back into output, so it is not a render-time
+//     injection surface.
+//   - It is injected outside <article>, because app.js inserts the search box
+//     *before the first <h1> inside* <article>. A hero rendered after that h1
+//     would land under the search box, and a hero inside <article> would be
+//     styled as prose. Nothing verifies this yet — `npm run check` has no hero
+//     assertion, and a misplaced hero still builds and passes. If the hero moves,
+//     look at it in `npm run serve`.
+const HERO_FENCE = /^!!!hero[ \t]*\n([\s\S]*?)\n!!![ \t]*$/m;
+
+function extractHero(raw) {
+  const match = HERO_FENCE.exec(raw);
+  if (!match) return { hero: "", body: raw };
+  return {
+    hero: match[1].replace(/\s+$/, ""),
+    body: raw.slice(0, match.index) + raw.slice(match.index + match[0].length),
+  };
+}
+
 function layout(opts) {
-  const { title, summary, body, currentUrl, headings, assets } = opts;
+  const { title, summary, hero, home, body, currentUrl, headings, assets } =
+    opts;
   const toc = headings
     .filter((h) => h.level === 2)
     .map((h) => `<a href="#${h.id}">${h.text}</a>`)
     .join("");
+  // Empty on a page with no level-2 headings (the landing page, Install).
+  const tocHtml = toc
+    ? `<nav class="toc"><h2>On this page</h2>${toc}</nav>`
+    : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -233,11 +272,14 @@ function layout(opts) {
 <link rel="stylesheet" href="${assets["hljs.css"]}">
 <script src="${assets["app.js"]}" defer></script>
 </head>
-<body>
+<body class="${home ? "home" : "doc"}${tocHtml ? " has-toc" : ""}${
+    hero ? " has-hero" : ""
+  }">
 <a class="skip" href="#main">Skip to content</a>
 ${navHtml(currentUrl)}
 <main id="main">
 <button class="menu" aria-label="Menu">☰ Menu</button>
+${hero ? `<header class="hero">${hero}</header>` : ""}
 <article>
 ${body}
 </article>
@@ -246,7 +288,7 @@ ${body}
 <p><a href="${REPO}">site source</a></p>
 </footer>
 </main>
-<aside>${toc ? `<nav class="toc"><h2>On this page</h2>${toc}</nav>` : ""}</aside>
+<aside>${tocHtml}</aside>
 </body>
 </html>
 `;
@@ -293,7 +335,8 @@ function build() {
   const pages = [];
   for (const rel of walk(CONTENT)) {
     const raw = fs.readFileSync(path.join(CONTENT, rel), "utf8");
-    const { meta, body } = frontmatter(raw);
+    const { meta, body: prose } = frontmatter(raw);
+    const { hero, body } = extractHero(prose);
     const src = prepare(body);
     const { html, headings } = renderWithIds(src);
     const currentUrl = urlFor(rel);
@@ -311,14 +354,19 @@ function build() {
           rel === "index.md"
             ? "f — a token-efficient CLI for LLMs"
             : `${title} · f`,
-        summary,
+        hero,
+        home: meta.page === "home",
         body: html,
         currentUrl,
         headings,
         assets,
       }),
     );
-    pages.push({ rel, title, summary, text, html });
+    // llms.txt and search.json must not carry the hero's markup: the hero is
+    // chrome, and its content is a verbatim copy of the install command and the
+    // `f help` listing that the prose below already states. Feed the plain-text
+    // consumers the article only.
+    pages.push({ rel, title, summary, text, html: body });
   }
 
   // GitHub Pages reads CNAME from the published root to learn the custom

@@ -1,0 +1,7 @@
+# The homepage hero is raw HTML inside content/index.md, and its terminal
+# transcript is column-aligned output (`f help`, run listings). Prettier's
+# markdown formatter collapses runs of spaces inside a <pre> block, which quietly
+# destroys that alignment — the transcript looked fine until someone ran
+# `npm run format`. dist/ is build output.
+dist/
+content/index.md

@@ -92,6 +92,15 @@ summary: One line — used for the meta description and search results.
    directory-order surprise, and the nav is reviewable in a diff. A content file
    that is not in `NAV` fails `npm run check`.
 
+   The homepage is the exception: it carries a `!!!hero` fence whose contents are
+   raw HTML, lifted out by `build.js` and injected as a `<header>` above
+   `<article>` (see the comment at `HERO_FENCE`). `content/index.md` is in
+   `.prettierignore` because the terminal transcript in that fence is
+   column-aligned output, and Prettier's markdown formatter collapses runs of
+   spaces inside a `<pre>` block — the alignment is destroyed silently, by
+   whoever runs `npm run format` last.
+
+
 3. `npm run check` before pushing.
 
 ## Status of the content
@@ -110,10 +119,16 @@ coverage, frontmatter and heading anchors — it cannot verify that the prose
 matches the binary, so the builtins page is checked against `f help` by hand when
 `f` releases.
 
-> **The prose is behind the core.** Content was last corrected against `f` 0.2.2;
-> the core in the repo above this directory is 0.3.1. `content/builtins.md` and
-> `content/ucks.md` are the pages most likely to be wrong. Reconcile them against
-> `f help` before treating the site as authoritative.
+| File                      | Prettier-managed      | Notes                                                                  |
+| ------------------------- | --------------------- | ---------------------------------------------------------------------- |
+| `build.js`, `check.js`     | yes                   | run `npm run format` before pushing                                     |
+| `content/index.md`         | **no** (ignored)      | hero fence holds a column-aligned terminal transcript                    |
+| `content/*.md`, `assets/*` | not yet — already drift | `npm run format` rewrites `credentials.md`, `ucks.md`, `hljs.css`         |
+
+The last row is pre-existing drift, left alone deliberately: formatting four
+unrelated files is a separate change, and until it is made, `npm run format`
+dirties the tree. Either commit the formatting on its own or narrow the script
+before trusting `git diff` after a format run.
 
 ## History
 
