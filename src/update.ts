@@ -188,8 +188,9 @@ interface DirtyBucket {
 /**
  * Git-backed buckets whose local work a force update would discard.
  * Dirty = uncommitted changes (working tree, staged or untracked) or commits
- * ahead of the upstream. node_modules is ignored: it is untracked-by-design
- * and the refresh path's git clean keeps it.
+ * ahead of the upstream. node_modules and package-lock.json are ignored: both are
+ * written by f's own dependency install, so counting them makes `f up` see its own
+ * work as the user's and refuse to update the bucket (see below).
  */
 function dirtyBuckets(sources: UckSource[]): DirtyBucket[] {
   const wanted = new Set(sources.map((src) => sourceBucket(src)));
@@ -208,7 +209,19 @@ function dirtyBuckets(sources: UckSource[]): DirtyBucket[] {
       }
     };
     // Untracked files too (git clean -fdx would remove them): --untracked-files=all.
-    const status = git("git status --porcelain --untracked-files=all -- . ':!node_modules'");
+    //
+    // node_modules and package-lock.json are excluded because f itself writes
+    // them: installDepsInTree() runs `npm install` in each uck dir on install and
+    // on `f up`. node_modules is untracked and kept by the refresh path, but
+    // package-lock.json is TRACKED, so without this exclusion `f up` classifies
+    // its own dependency install as the author's uncommitted work — and skips the
+    // bucket it was about to update. Measured on a machine whose only change was
+    // core's own npm install: the bucket was reported with "1 uncommitted
+    // change(s)" and skipped. The user re-runs `f up`, it skips again, and nothing
+    // says why.
+    const status = git(
+      "git status --porcelain --untracked-files=all -- . ':!node_modules' ':!*package-lock.json'"
+    );
     const ahead = git("git log --oneline @{u}..HEAD 2>/dev/null");
     const nLocal = status ? status.trim().split("\n").length : 0;
     const nAhead = ahead ? ahead.trim().split("\n").length : 0;
