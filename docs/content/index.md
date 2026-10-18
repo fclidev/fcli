@@ -79,8 +79,9 @@ The shape of the cost matters more than any single number. An MCP tool
 definition sits in the context of every request whether or not the model calls
 it, and its size depends on how verbosely the server's author wrote the
 description. `f` separates the two costs: the index carries names only, so its
-marginal cost is the name itself — measured at 2.9 tokens per uck — and
-descriptions are paid only for the ucks a query actually returned.
+marginal cost is the name itself — measured at 4 tokens per uck on identical
+5-character names, flat from 1 to 32 names — and descriptions are paid only for
+the ucks a query actually returned.
 
 That separation is also why the full listing is no longer the entry point.
 Printing name plus description for every uck measured 161 tokens at 8 ucks and

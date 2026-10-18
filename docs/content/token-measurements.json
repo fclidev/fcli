@@ -1,7 +1,7 @@
 {
   "_comment": "Snapshot of `node scripts/count-tokens.mjs --snapshot`. Every number here is counted from the `f` binary's own output or from a real store — none is typed by hand. docs/content/index.md quotes these figures; regenerate this file rather than editing it.",
   "generatedBy": "docs/scripts/count-tokens.mjs",
-  "generatedAt": "2026-10-17",
+  "generatedAt": "2026-10-18",
   "tokenizer": "js-tiktoken 1.0.21",
   "ranks": [
     "o200k_base",
@@ -10,13 +10,14 @@
   "fVersionMeasured": "0.3.3",
   "binary": "/home/kenny/git/fcli/dist/index.js",
   "store": "/home/kenny/.f/ucks",
-  "ucksInStore": 16,
+  "ucksInStore": 17,
   "discovery": {
     "index": {
-      "ucks": 16,
-      "o200k_base": 59,
-      "cl100k_base": 60,
-      "marginalPerUck": 2.9,
+      "ucks": 17,
+      "o200k_base": 61,
+      "cl100k_base": 62,
+      "averagePerUckThisStore": 3.6,
+      "marginalPerUck": 4,
       "note": "names only, columnised grid; marginal cost is the name itself"
     },
     "search": [
@@ -47,13 +48,13 @@
       "ucks": 16,
       "measuredFrom": "git worktree of 86b3445, `npx tsx src/index.ts` (the real pre-change binary)",
       "reconstruction": {
-        "o200k_base": 376,
-        "cl100k_base": 375
+        "o200k_base": 391,
+        "cl100k_base": 390
       },
       "perUckLine": {
         "min": 6,
         "max": 37,
-        "mean": 20.8
+        "mean": 20.5
       }
     }
   },
@@ -82,9 +83,9 @@
   "_encoders": "o200k_base and cl100k_base agree on invocation strings and short queries; they diverge by 1-2 tokens per line on descriptions dense with slashes or hyphens. See `disagree` below rather than assuming agreement.",
   "disagree": [
     {
-      "label": "f (index), 16 ucks (this store)",
-      "o200k_base": 59,
-      "cl100k_base": 60
+      "label": "f (index), 17 ucks (this store)",
+      "o200k_base": 61,
+      "cl100k_base": 62
     },
     {
       "label": "f search ssh",
@@ -102,14 +103,14 @@
       "cl100k_base": 9
     },
     {
-      "label": "f help with descriptions, 16 ucks (pre-0.4 shape)",
-      "o200k_base": 376,
-      "cl100k_base": 375
+      "label": "f help with descriptions, 17 ucks (pre-0.4 shape)",
+      "o200k_base": 391,
+      "cl100k_base": 390
     },
     {
-      "label": "index cost per uck (grid only)",
-      "o200k_base": 46,
-      "cl100k_base": 47
+      "label": "index cost per uck (grid only, average over this store)",
+      "o200k_base": 61,
+      "cl100k_base": 62
     },
     {
       "label": "kensand-fcli-ucks/vaultwarden",

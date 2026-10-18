@@ -27,8 +27,8 @@ f search credential          →  33 tokens, per query
 ```
 
 Discovery is two steps: `f` lists names, `f search <query>` ranks them, and
-`f <uck> --help` gives detail on one. The index costs about 2.9 tokens per uck
-because a name cannot be padded the way a description can.
+`f <uck> --help` gives detail on one. An added uck costs about 4 tokens in the
+index — measured on identical 5-character names, flat from 1 to 32 names.
 
 For MCP-side scale — measured elsewhere, not here, same encoder — production
 servers average roughly **140–730 tokens per tool definition**: GitHub 138,
@@ -106,9 +106,9 @@ f <uck> [args]
 | `f uck ...` | push store ucks to a git repo |
 | `f up` | full update: re-fetch all configured uck sources |
 | `f help` | list every uck name |
-
-`f help`, `f search <query>`, and `f up` are handled in core before the uck
-registry is consulted, so they work against an empty store.
+`f help` and `f up` are handled in core before the uck registry is consulted, so
+they work against an empty store. `f search <query>` is an ordinary uck in the
+default bundle.
 
 `v`, `w`, and `ls` are **default ucks** — they ship in the
 [`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package

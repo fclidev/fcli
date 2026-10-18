@@ -1,12 +1,22 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadStoreUcks, loadFromNodeModules, loadFromNodeModulesMaybe, snapshot, sourceKind } from "./registry.js";
-import { ensureGlobalConfig, migrateLegacyDefaults, allSources } from "./config.js";
+import {
+  loadStoreUcks,
+  loadFromNodeModules,
+  loadFromNodeModulesMaybe,
+  snapshot,
+  sourceKind,
+} from "./registry.js";
+import {
+  ensureGlobalConfig,
+  migrateLegacyDefaults,
+  allSources,
+} from "./config.js";
 import { installSource, installedUcks } from "./store.js";
 import { acquireStoreLock } from "./lock.js";
 import { updateAll } from "./update.js";
-import { helpNames, searchMatches, searchUsage } from "./help.js";
+import { helpNames } from "./help.js";
 import { type Uck, type UckRunContext, CONTRACT_VERSION } from "./types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -70,7 +80,8 @@ export async function run(argv: string[]): Promise<void> {
   const origin: Record<string, string> = {};
 
   for (const u of await loadStoreUcks(fVersion)) {
-    if (ucks[u.name]) console.error(`f: uck '${u.name}' shadowed (store) by a later source`);
+    if (ucks[u.name])
+      console.error(`f: uck '${u.name}' shadowed (store) by a later source`);
     ucks[u.name] = u;
     origin[u.name] = "store";
   }
@@ -79,9 +90,14 @@ export async function run(argv: string[]): Promise<void> {
     if (sourceKind(specifier) !== "npm") continue;
     // Legacy npm sources (pre-store-install) live in a surrounding
     // node_modules; skip silently if they never resolved there.
-    const u = await loadFromNodeModulesMaybe(specifier, fVersion, snapshot(Object.values(ucks)));
+    const u = await loadFromNodeModulesMaybe(
+      specifier,
+      fVersion,
+      snapshot(Object.values(ucks)),
+    );
     for (const uck of u) {
-      if (ucks[uck.name]) console.error(`f: uck '${uck.name}' shadowed by npm:${specifier}`);
+      if (ucks[uck.name])
+        console.error(`f: uck '${uck.name}' shadowed by npm:${specifier}`);
       ucks[uck.name] = uck; // later (project) sources override store/builtins
       origin[uck.name] = `npm:${specifier}`;
     }
@@ -94,34 +110,10 @@ export async function run(argv: string[]): Promise<void> {
     return;
   }
 
-  // `f search` is core rather than a uck for the same reason `help` and `up`
-  // are: it has to work against the registry with an empty store, and it is the
-  // path that keeps discovery bounded as the store grows.
-  if (name === "search") {
-    if (!rest.length) {
-      console.log(searchUsage());
-      return;
-    }
-    const hits = searchMatches(Object.values(ucks), rest.join(" "));
-    if (!hits.length) {
-      // Say so plainly: a silent empty result reads as "no such capability"
-      // and sends the model off to invent a workaround.
-      console.log(`no uck matched: ${rest.join(" ")}`);
-      process.exitCode = 1;
-      return;
-    }
-    const byName = hits.filter((h) => h.byName);
-    const byDesc = hits.filter((h) => !h.byName);
-    for (const h of byName) console.log(`${h.name}  ${h.desc}`);
-    if (byDesc.length) {
-      // Separate section: these did not match a name, so they are leads rather
-      // than answers. Folding them in would let a description keyword outrank
-      // the command the query actually named.
-      if (byName.length) console.log("maybe:");
-      for (const h of byDesc) console.log(`${h.name}  ${h.desc}`);
-    }
-    return;
-  }
+  // `search` is a uck, not core: ranking is the part most likely to need
+  // tuning, and a uck ships without an f release. Unlike `help` and `up` it does
+  // not have to answer against an empty store — the empty store has nothing to
+  // search — so it does not need core's guarantee.
 
   if (name === "--version" || name === "-V") {
     console.log(fVersion);
@@ -139,7 +131,9 @@ export async function run(argv: string[]): Promise<void> {
   const uck: Uck | undefined = ucks[name];
   if (!uck) {
     // exitCode + return, never exit(): see the note at the bottom.
-    console.error(`f: unknown uck '${name}'. Run 'f' to list ucks, 'f search <query>' to look one up.`);
+    console.error(
+      `f: unknown uck '${name}'. Run 'f' to list ucks, 'f search <query>' to look one up.`,
+    );
     process.exitCode = 1;
     return;
   }
@@ -152,14 +146,23 @@ export async function run(argv: string[]): Promise<void> {
   const helpToken = rest[0];
   const isBareHelp =
     rest.length === 0 ||
-    (rest.length === 1 && (helpToken === "--help" || helpToken === "-h" || helpToken === "help"));
-  if (isBareHelp && (typeof uck.help === "string" || typeof uck.about === "string")) {
-    console.log(`${name}  ${uck.desc ?? ""}\n\n${(uck.help ?? uck.about) as string}`);
+    (rest.length === 1 &&
+      (helpToken === "--help" || helpToken === "-h" || helpToken === "help"));
+  if (
+    isBareHelp &&
+    (typeof uck.help === "string" || typeof uck.about === "string")
+  ) {
+    console.log(
+      `${name}  ${uck.desc ?? ""}\n\n${(uck.help ?? uck.about) as string}`,
+    );
     return;
   }
 
   try {
-    const uckList = Object.values(ucks).map((u) => ({ name: u.name, desc: u.desc }));
+    const uckList = Object.values(ucks).map((u) => ({
+      name: u.name,
+      desc: u.desc,
+    }));
     const registry = ucks;
     const ctx: UckRunContext = {
       fVersion,
@@ -212,7 +215,9 @@ export async function run(argv: string[]): Promise<void> {
 /** Does this run have anything to install? Avoids taking the lock when idle. */
 function needsInstall(storeEmpty: boolean): boolean {
   if (storeEmpty) return true;
-  return allSources().some((src) => looksLocal(typeof src === "string" ? src : src.source));
+  return allSources().some((src) =>
+    looksLocal(typeof src === "string" ? src : src.source),
+  );
 }
 
 function looksLocal(s: string): boolean {

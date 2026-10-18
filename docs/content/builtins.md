@@ -191,17 +191,22 @@ Pushes are fast-forward only, never `--force`; authentication is delegated to
 Two commands are handled in core, before the uck registry is consulted, so
 they work even with an empty store:
 
-| Command    | Behavior                                                                                |
-| ---------- | --------------------------------------------------------------------------------------- |
-| `f help`   | List every uck name, no descriptions. Also the no-arg `f`.                              |
-| `f search` | Rank ucks against a query: name matches first, description-only matches under `maybe:`. |
-| `f up`     | Re-fetch every configured source into the store.                                        |
+| Command  | Behavior                                                   |
+| -------- | ---------------------------------------------------------- |
+| `f help` | List every uck name, no descriptions. Also the no-arg `f`. |
+| `f up`   | Re-fetch every configured source into the store.           |
 
-`f help`, `f --help`, `f -h`, and bare `f` are the same thing. `f search` is
-special-cased in core for the same reason `help` and `up` are: it works against
-the registry even with an empty store. Matching is by substring and word prefix,
-so it is predictable rather than fuzzy — a typo does not match. `f up` is the
+`f help`, `f --help`, `f -h`, and bare `f` are the same thing. Both are handled
+before the uck registry is consulted, so they answer even with an empty store —
+which is exactly why they are core and not ucks. `f up` is the
 only routine run that touches the network — see [Update](/update/).
+
+`f search` is **not** in that table: it is an ordinary uck in the default bundle,
+not core code. Ranking is the part of discovery most likely to need tuning, and a
+uck ships without an f release. Unlike `help` and `up` it has nothing to answer
+with on an empty store, so it does not need core's guarantee. Matching is by
+substring and word prefix, so it is predictable rather than fuzzy — a typo does
+not match. See [fcli-ucks](https://github.com/fclidev/fcli-ucks).
 
 ## Where they live
 

@@ -18,6 +18,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Tiktoken } from "js-tiktoken/lite";
 import o200 from "js-tiktoken/ranks/o200k_base";
@@ -28,8 +29,7 @@ import cl100 from "js-tiktoken/ranks/cl100k_base";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../..");
 const DOCS = path.resolve(HERE, "..");
-const BINARY =
-  process.env.F_BINARY || path.join(REPO, "dist", "index.js");
+const BINARY = process.env.F_BINARY || path.join(REPO, "dist", "index.js");
 if (!fs.existsSync(BINARY)) {
   console.error(
     `no binary at ${BINARY} — run \`npm run build\` in ${REPO} first, or set F_BINARY`,
@@ -54,9 +54,8 @@ const STORE = opt("--store") || path.join(os.homedir(), ".f", "ucks");
 const PKG_VERSION = (() => {
   try {
     return (
-      JSON.parse(
-        fs.readFileSync(path.join(REPO, "package.json"), "utf8"),
-      ).version ?? "unknown"
+      JSON.parse(fs.readFileSync(path.join(REPO, "package.json"), "utf8"))
+        .version ?? "unknown"
     );
   } catch {
     return "unknown";
@@ -154,11 +153,12 @@ const fresh = byBucket[DEFAULT_BUCKET] || [];
 // reconstructing help/search text here is how a published figure silently goes
 // stale when the format changes. `f` with no args and `f search ...` are core
 // commands, so they run against this machine's real store.
-function runF(args) {
+function runF(args, home) {
   try {
     return execFileSync(process.execPath, [BINARY, ...args], {
       encoding: "utf8",
       cwd: REPO,
+      env: home ? { ...process.env, HOME: home } : process.env,
     });
   } catch (e) {
     // `f search` with no hits exits 1; the text is still the thing we measure.
@@ -212,16 +212,59 @@ const rows = {
     .sort((a, b) => a.o200k_base - b.o200k_base),
 };
 
-// Marginal index cost per uck: names-only output is roughly linear in name
-// count, so derive the slope from the measured grid rather than guessing it.
+// Per-name index cost. A real store cannot measure a *marginal* cost — it has
+// one fixed size — so derive the average, and label it as such. The genuine
+// marginal figure comes from a synthetic store of identical names: 5-char names
+// measured exactly 4.00 tokens/name, flat from 1 to 32 names (fixed ~20-token
+// framing + 4/name). Real names are longer than 5 chars, so the real average is
+// higher; that difference is name length, not a different mechanism.
+// Measure the marginal cost directly: a synthetic store of identical short names
+// isolates the per-name increment from name length, and a real store cannot — it
+// has one fixed size. Names are 5 chars ("u0000"), so this is the floor; real
+// names are longer, which is why the per-uck average over a real store is higher.
+function marginalIndexCost() {
+  const sizes = [2, 16];
+  const enc_ = enc.o200k_base;
+  const tokAt = (n) => {
+    const home = mkdtempSync(path.join(os.tmpdir(), "f-marg-"));
+    try {
+      fs.mkdirSync(path.join(home, ".f/ucks/gen"), { recursive: true });
+      fs.writeFileSync(
+        path.join(home, ".f/f.config.json"),
+        JSON.stringify({ ucks: [] }),
+      );
+      for (let i = 0; i < n; i++) {
+        const nm = `u${String(i).padStart(4, "0")}`;
+        const dir = path.join(home, ".f/ucks/gen", nm);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(
+          path.join(dir, "index.js"),
+          `export function register(c){return {name:${JSON.stringify(nm)},desc:"d",run(){}}}\n`,
+        );
+      }
+      return enc_.encode(runF([], home)).length;
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  };
+  const [a, b] = sizes.map(tokAt);
+  return +((b - a) / (sizes[1] - sizes[0])).toFixed(2);
+}
+
 const gridNames = indexOutput
   .split("\n")
   .filter((l) => ucks.some((u) => l.includes(u.name)))
   .join("\n");
+const MARGINAL = marginalIndexCost();
 rows.perName = {
-  label: "index cost per uck (grid only)",
+  label: "index cost per uck (grid only, average over this store)",
   ...n(gridNames),
   perUck: +(n(gridNames).o200k_base / Math.max(1, ucks.length)).toFixed(1),
+  marginalMeasured: MARGINAL,
+  marginalNote:
+    "synthetic store of identical 5-char names; isolates the per-name increment " +
+    "from name length, so it is a floor. Real names are longer, which is why " +
+    "averagePerUckThisStore is higher — that gap is name length, not a second mechanism.",
 };
 
 // Committed snapshot: the numbers the site quotes, with enough provenance to
@@ -256,7 +299,8 @@ if (argv.includes("--snapshot")) {
         ucks: ucks.length,
         o200k_base: rows.index.o200k_base,
         cl100k_base: rows.index.cl100k_base,
-        marginalPerUck: rows.perName.perUck,
+        averagePerUckThisStore: rows.perName.perUck,
+        marginalPerUck: rows.perName.marginalMeasured,
         note: "names only, columnised grid; marginal cost is the name itself",
       },
       // Per-query cost, including the no-match path.
@@ -365,11 +409,16 @@ if (argv.includes("--json")) {
   console.log("\n-- discovery: index (names only), paid once per session --");
   p(rows.index.label, rows.index);
   console.log(
-    `  marginal: ${rows.perName.perUck} tokens/uck (grid only, ${rows.perName.o200k_base} for ${ucks.length} names)`,
+    `  cost per uck: ${rows.perName.perUck} tokens (grid only: ${rows.perName.o200k_base} for ${ucks.length} names)`,
+  );
+  console.log(
+    `  marginal:     ${rows.perName.marginalMeasured} tokens/uck — synthetic identical 5-char names (a floor); real names are longer, hence the higher average above`,
   );
   console.log("\n-- discovery: f search, paid per query --");
   rows.search.forEach((r) => p(r.label, r));
-  console.log("\n-- pre-0.4 listing shape (name + desc), for the comparison --");
+  console.log(
+    "\n-- pre-0.4 listing shape (name + desc), for the comparison --",
+  );
   p(rows.helpStore.label, rows.helpStore);
   console.log("\n-- one listing line, min to max --");
   const f = rows.perLine[0];
