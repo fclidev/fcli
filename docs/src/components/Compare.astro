@@ -40,9 +40,24 @@
  * token figure below is a measurement of a real payload, but the decision to make
  * those three calls is authored. Do not describe this page as a benchmark transcript.
  *
- * Numbers: scripts/measure-session.mjs, against a live
- * @modelcontextprotocol/server-filesystem session (initialize + tools/list + two
- * tools/call) and the built `f` binary, o200k_base throughout.
+ * THE ABSOLUTE COLUMN, AND WHY BOTH ARE SHOWN
+ *
+ * Tool payload alone is the honest unit for "what does a capability cost", but it is a
+ * terrible unit for scale: 57 tokens of index inside a 9k-token request is not the
+ * impression the bare number gives. So the second figure is the whole request body as
+ * the server counted it -- scripts/measure-absolute.mjs runs this job twice against a
+ * real model with identical system prompt, identical shell tool and identical result
+ * framing, and reads prompt_tokens off the response. That framing is the provider's
+ * own and cannot be reconstructed from a local rank, which is why it is measured rather
+ * than estimated.
+ *
+ * The absolute ratio is much smaller than the payload ratio, and that is the finding,
+ * not a caveat: most of a real request is framing both sides pay. What the schema adds
+ * is the 2,202-token difference between the two first turns -- everything else is what
+ * any agent costs regardless of how capabilities arrive.
+ *
+ * Numbers: scripts/measure-session.mjs (payload, o200k_base) and
+ * scripts/measure-absolute.mjs (whole body, server-counted).
  */
 
 // From scripts/measure-session.mjs. Re-run it and edit what it prints.
@@ -54,6 +69,8 @@ const MCP = {
   results: 70,
   uncached: 8701,
   cached: 933,
+  // Whole request body, counted by the server, one turn per exchange.
+  body: [2579, 2601, 2622, 2648],
 };
 
 const F = {
@@ -67,17 +84,25 @@ const F = {
   resultTurns: [42, 14], // creds status, creds get (miss)
   results: 56,
   total: 248,
+  body: [377, 408, 439, 463],
 };
 
 const RATIO = { cached: 3.8, uncached: 35.1 };
+
+/* One divisor for both panes, derived from the larger series. Scaling each column to
+   its own maximum would make two bars of very different height look equal-heighted,
+   which is the specific way a chart becomes a lie. */
+const BAR_MAX = Math.max(...MCP.body, ...F.body);
+const barPx = (t) => Math.max(4, Math.round((t / BAR_MAX) * 132));
 ---
 
 <div class="compare">
   <!-- The job, stated once, because "same cost" only means anything against a task. -->
   <p class="compare-job">
-    Three turns against one credential: discover what exists, look for the value, read
-    it. Every figure is the request-body payload of that turn, tokenized with
-    <code>o200k_base</code>.
+    Three turns against one credential: discover what exists, look for the value, read it.
+    Each row is that turn's tool payload; the bars below are the <b>whole request body</b>
+    counted by a real model, so the ratio is read against a real window rather than
+    against nothing.
   </p>
 
   <div class="compare-panes">
@@ -106,6 +131,16 @@ const RATIO = { cached: 3.8, uncached: 35.1 };
         <div class="trace-sum">
           definitions ride on all three: <b>{(MCP.defsPerTurn * 3).toLocaleString()}</b>
           + results {MCP.results} = <b>{MCP.uncached.toLocaleString()}</b>
+        </div>
+        <div class="trace-body">
+          <span>whole body, turn 1 → 4</span>
+          <span class="bars">
+            {MCP.body.map((t, i) => (
+              <span class="bar" style={`--h:${barPx(t)}px`} title={`turn ${i + 1}: ${t} tokens`}>
+                <span class="bar-v">{t.toLocaleString()}</span>
+              </span>
+            ))}
+          </span>
         </div>
       </div>
 
@@ -142,6 +177,16 @@ const RATIO = { cached: 3.8, uncached: 35.1 };
           index re-sent each turn (it lives in history): <b>{(F.indexResent * 3)}</b>
           + calls <b>{F.search + F.results}</b> = <b>{F.total}</b>
         </div>
+        <div class="trace-body">
+          <span>whole body, turn 1 → 4</span>
+          <span class="bars">
+            {F.body.map((t, i) => (
+              <span class="bar" style={`--h:${barPx(t)}px`} title={`turn ${i + 1}: ${t} tokens`}>
+                <span class="bar-v">{t}</span>
+              </span>
+            ))}
+          </span>
+        </div>
       </div>
 
       <p class="compare-foot">
@@ -154,9 +199,13 @@ const RATIO = { cached: 3.8, uncached: 35.1 };
   <!-- Both ratios, with the axes named. The smaller ratio is the honest one for billed
        tokens; occupancy is where the difference actually is. -->
   <p class="compare-verdict">
-    <b>{RATIO.cached}×</b> on billed tokens, once MCP's prefix is cached ·
-    <b>{MCP.defsPerTurn.toLocaleString()} vs {F.indexOnce}</b> tokens of context window
-    occupied, which caching does not change ·
+    The same request, counted by the server it was sent to:
+    <b>{MCP.body[0].toLocaleString()} vs {F.body[0].toLocaleString()}</b> tokens on turn
+    one — so the schema costs <b>{(MCP.body[0] - F.body[0]).toLocaleString()} tokens</b>
+    over a framing both sides pay.
+    <b>{RATIO.cached}×</b> on billed tool tokens, and
+    <b>{MCP.defsPerTurn.toLocaleString()} vs {F.indexOnce}</b> of window occupied, which
+    caching does not change.
     <a href="/docs/measurements/">how these were measured</a>
   </p>
 </div>

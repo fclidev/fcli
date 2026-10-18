@@ -744,6 +744,54 @@ body.home article {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
+/* Absolute request body, turn by turn. The bar height is tokens/32 in BOTH panes --
+   one divisor, or the two columns would each be self-scaled and the visual comparison
+   would be a lie. MCP's first turn is ~2.6k against f's ~380, and the bars should look
+   about seven times different, because they are. */
+.trace-body {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid #2a2f35;
+  font-size: 0.68rem;
+  color: var(--code-plain);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.bars {
+  /* Room for a 132px bar plus its label sitting above it, so no label is ever
+     clipped by a short bar -- the f series tops out near 14px and would otherwise
+     have to share 14px with its own digits. */
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 152px;
+}
+.bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--h, 4px);
+  border-radius: 3px 3px 0 0;
+  background: var(--accent-soft);
+}
+.bar-v {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  padding-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.62rem;
+  white-space: nowrap;
+  color: var(--accent);
+}
+.compare-col:first-child .bar {
+  background: #3a2a2a;
+}
+.compare-col:first-child .bar-v {
+  color: #e8a0a0;
+}
 .compare-verdict {
   margin: 0.7rem 0 0;
   font-size: 0.8rem;
