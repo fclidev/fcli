@@ -28,21 +28,38 @@
  * evidence. It also makes the MCP pane honest — the server's 26 declarations are 3,575
  * tokens, and you can read every one of them to check that.
  *
- * WHAT THE COMPARISON SHOWS
+ * WHAT THE COMPARISON SHOWS, INCLUDING WHERE IT DOES NOT FAVOUR f
  *
  * The runs endpoint sends `repository` and `head_repository` as the same 46-key object
- * twice, plus `head_commit` (2.5 kB) and two full user objects, to tell you eight
- * useful things. That is where the tokens go, on both sides. `f` spends 16,239 tokens
- * and MCP 20,461 on this job; the difference is declarations and index, 3,575+144
- * tokens times the turns, while the payload every one of those turns re-sends is shared.
+ * twice, plus `head_commit` (2.5 kB) and two full user objects, to convey eight useful
+ * fields. 11,232 tokens of response, 108 of them worth reading.
  *
- * And the MCP server cannot do this job: tools/list has no workflow, job, log or
- * artifact tool, so the agent shells out through exec anyway. Scroll the declarations
- * and search for "workflow" — the only hit is a run URL inside a repository field.
+ * The interesting fact is where the junk sits: `conclusion` is line 13 of 689, 129
+ * tokens in. The response is 11,232 tokens conveying 59 -- 190x -- and every wasted
+ * token is behind the answer. That decides what a token budget does to each side.
  *
- * Regenerate: npm run measure:session
+ * A harness that truncates long tool output by cutting whole lines -- the only kind
+ * that leaves JSON parseable enough to be useful -- keeps 129/689 lines in a 4,000-token
+ * budget. It sees one run's conclusion and must call again. It cannot pipe that
+ * remainder through jq, because the truncation destroys the JSON first: once the model
+ * is reading a cut response, the filter is no longer available. So truncation is a
+ * strictly worse version of just piping, and the honest question is which architecture
+ * makes piping easier. That is a harness question, not a schema question -- a bash tool
+ * and an exec tool both have a shell, both can pipe, neither is charged differently.
+ *
+ * Where f does win, and it is a real difference: `f gh GET` has no projection flag, so
+ * the projection lives in the model's command line and has to be typed correctly, from
+ * memory, on every invocation and every person's machine. A projection on f itself
+ * (`f gh ls-runs`, selecting the eight fields) is one line of JSON in a checked-in uck,
+ * typed zero further times. The MCP side cannot fix this by editing its tool list, which
+ * is the canonical server's upstream's file. That is the argument this page should have
+ * been making from the start; the raw token totals are downstream of it and weaker.
+ *
+ * Tool definitions real, API bodies synthesized to the live schema, log in GitHub's
+ * format. Regenerate: npm run measure:session
  */
 import session from "../data/session-comparison.json";
+import {UNFILTERED_RUNS_TOKENS, USEFUL_FIELDS_TOKENS, CONCLUSION_LINE, RUNS_LINES, CONCLUSION_TOKENS_IN} from "../data/runs-cost.mjs";
 
 const fmt = (v) => Number(v).toLocaleString();
 const side = (s) => ({
@@ -55,9 +72,6 @@ const side = (s) => ({
 });
 const MCP = side(session.mcp);
 const F = side(session.f);
-
-// The visible-text total is the honest one: it is what the reader could sum by hand.
-const diff = MCP.total - F.total;
 ---
 
 <div class="compare">
@@ -102,15 +116,20 @@ const diff = MCP.total - F.total;
   </div>
 
   <p class="compare-verdict">
-    Same job, same answer. <b>{fmt(MCP.total)}</b> against <b>{fmt(F.total)}</b> — the{" "}
-    <b>{fmt(diff)}</b> difference is declarations and index, paid once per turn. What
-    both pay, every turn, is the payload: {fmt(session.mcp.metrics.turns[1].result)}{" "}
-    tokens for three runs whose useful content is eight fields, because{" "}
-    <code>repository</code> and <code>head_repository</code> are the same 46-key object
-    twice. <code>f gh</code> cannot project — no flag exists — so the model reads all of
-    it; and the GitHub MCP server has <b>no Actions tool at all</b>, so it shells out
-    through <code>exec</code> regardless. A uck is editable source: the projection is one
-    file in this repo.{" "}
+    The runs endpoint costs <b>{fmt(UNFILTERED_RUNS_TOKENS)}</b> tokens to convey{" "}
+    <b>{fmt(USEFUL_FIELDS_TOKENS)}</b> — <b>{Math.round(UNFILTERED_RUNS_TOKENS / USEFUL_FIELDS_TOKENS)}×</b>,
+    because <code>repository</code> and <code>head_repository</code> are the same 46-key
+    object twice. But <code>conclusion</code> is line {CONCLUSION_LINE} of {RUNS_LINES},{" "}
+    {fmt(CONCLUSION_TOKENS_IN)} tokens in — the junk is <em>behind</em> the answer. A
+    harness that truncates by lines sees one run, must call again, and cannot then pipe:
+    cutting the JSON removes the filter. Truncation is a worse version of piping, and
+    piping is a <em>harness</em> capability — <code>bash</code> and{" "}
+    <code>exec</code> both have a shell and neither is charged for it. What differs is who owns the fix.{" "}
+    <code>f gh</code> has no projection flag, so the projection is retyped on every call;
+    a projection on <code>f</code> is one line of JSON in a checked-in uck, and the
+    server's tool list is someone else's upstream. Totals: <b>{fmt(MCP.total)}</b> against{" "}
+    <b>{fmt(F.total)}</b>, payload shared, the gap mostly the 26 declarations this job
+    cannot use.{" "}
     <a href="/docs/measurements/">how these were measured</a>
   </p>
 </div>
