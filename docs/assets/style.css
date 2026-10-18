@@ -747,22 +747,30 @@ body.home article {
 /* Animated session streams. Turns reveal in sequence; the counter runs up to the
    measured cumulative figure. Text is revealed, never generated — the numbers are the
    measurement and the animation only paces them. */
+/* The full sessions. These panes are ~750 lines each, so they scroll rather than
+   making a 30,000-line document: the content stays readable in full, the page does
+   not become un-navigable. Height is in vh so the pane is never taller than the
+   viewport it is being read in, and `max-height` rather than a fixed height keeps a
+   short session from leaving a large empty box.
+   Overscroll-behavior: contain -- without it, reaching the end of a pane scrolls the
+   page out from under it and the reader loses their place in 700 lines of log. */
 .stream {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
   padding: 0.55rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   background: var(--code-bg);
   border-radius: 6px;
-  min-height: 15rem;
+  height: 68vh;
+  max-height: 46rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
-/* Hiding turns is conditional on the script having claimed the widget
-   (.streams-live, set by app.js). Without that gate a script failure -- a blocked
-   /app.js, an error earlier in the file, an old browser -- leaves six invisible
-   turns and two counters reading zero, i.e. the page's central claim silently
-   replaced by an empty box. Default state is visible; animation is opt-in. */
+/* A sticky header inside a scrolling pane costs 700 lines of covered content; the
+   turn label scrolls away with its turn, which is what the reader expects. */
 .turn {
   opacity: 1;
 }
@@ -802,6 +810,31 @@ body.home article {
 .ln.tool {
   border-left-color: var(--code-plain);
   color: var(--code-plain);
+}
+/* Tool definitions and API bodies are long JSON; they wrap on characters rather than
+   words because a 110-char GitHub URL template has no break opportunity. */
+.ln.tooldef,
+.ln.result {
+  border-left-color: var(--code-plain);
+  color: var(--code-plain);
+  word-break: break-all;
+}
+.ln.tooldef {
+  border-left-color: var(--code-str);
+  opacity: 0.85;
+}
+.ln.call {
+  border-left-color: var(--code-fn);
+  color: var(--code-ink);
+  word-break: break-all;
+}
+.ln.user {
+  border-left-color: var(--accent);
+  color: var(--code-ink);
+}
+.ln.asst-text {
+  border-left-color: var(--code-fn);
+  color: var(--code-str);
 }
 .ln.body {
   border-left-color: var(--code-str);

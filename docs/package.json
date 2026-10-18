@@ -10,7 +10,8 @@
     "dev": "astro dev",
     "preview": "astro preview",
     "measure:streams": "node scripts/measure-streams.mjs",
-    "measure:gh": "node scripts/measure-gh-log.mjs"
+    "measure:gh": "node scripts/measure-gh-log.mjs",
+    "measure:session": "node scripts/gen-session.mjs"
   },
   "engines": {
     "node": ">=22.14.0"

@@ -1,215 +1,116 @@
 ---
 /**
- * Both sides fetching ONE GitHub Actions failure log.
+ * Two complete sessions fetching one GitHub Actions failure log, rendered in full.
  *
- * WHAT THIS SECTION ACTUALLY MEASURED, AND WHY THE CONCLUSION IS THE OPPOSITE OF
- * THE ONE THIS PAGE USED TO MAKE
+ * WHAT YOU ARE LOOKING AT
  *
- * The job is: find the failing run, find the failed job, read its log.
+ * Every character of both sessions is on this page: the system prompt, every tool
+ * definition, every call, every result, including the 11,232-token API response that
+ * makes the argument. Nothing is truncated, nothing is elided, nothing says
+ * "…truncated…". The panes scroll because the content is the point.
  *
- * The payload is enormous and neither side controls it. GitHub's runs endpoint returns
- * 35 fields per run, of which `repository` and `head_repository` are the same nested
- * repo object twice — 7,684 of 10,814 bytes — plus two full user objects. Three runs
- * cost 12,573 tokens to learn eight useful things, which is 224 tokens of useful
- * things.
+ * Tool definitions are real — tools/list from @modelcontextprotocol/server-github, all
+ * 26 of them. The API response bodies are synthesized to the live schema: same keys,
+ * same nesting, same field sizes, measured against real responses from
+ * fclidev/fcli/actions/runs (the three runs here cost 11,232 tokens against 12,573 for
+ * the real three, an 11% difference that comes from commit message text). Log lines
+ * follow GitHub's Actions format. The values are written, not captured.
  *
- * That dwarfs everything this section used to argue about. MCP's resident definitions
- * are 2,877 tokens on 14 tools; against a single 12,573-token response, residency is
- * noise, and the 48x / 77x ratios computed from it were measuring the wrong term of
- * the equation.
+ * This is a synthetic session and says so. What is not synthetic: every number on the
+ * page is o200k_base over the exact text below, computed by the same script that wrote
+ * the text. There is no figure you can see here that was typed.
  *
- * AND THE RAW ENDPOINT FAVOURS MCP HERE
+ * WHY THE WHOLE THING RATHER THAN AN EXCERPT
  *
- * `f gh GET` forwards the request and prints the body. It has no projection — a --jq
- * flag is accepted and ignored, which is worse than rejecting it. So a model using `f`
- * must pipe through jq, which means `f` requires TWO tools: bash and jq. The MCP side
- * needs one exec tool, which is one schema plus a shell pipeline.
+ * The argument is about volume. An excerpt demonstrates selection, which is exactly the
+ * capability `f` lacks: `f gh GET` returns the whole body and there is no projection
+ * flag, so the model reads all of it. Hiding the body to save pixels would remove the
+ * evidence. It also makes the MCP pane honest — the server's 26 declarations are 3,575
+ * tokens, and you can read every one of them to check that.
  *
- * This is the strongest argument against this page's thesis and it is stated in the
- * headline rather than buried.
+ * WHAT THE COMPARISON SHOWS
  *
- * WHAT THE MCP SERVER CANNOT DO AT ALL
+ * The runs endpoint sends `repository` and `head_repository` as the same 46-key object
+ * twice, plus `head_commit` (2.5 kB) and two full user objects, to tell you eight
+ * useful things. That is where the tokens go, on both sides. `f` spends 16,239 tokens
+ * and MCP 20,461 on this job; the difference is declarations and index, 3,575+144
+ * tokens times the turns, while the payload every one of those turns re-sends is shared.
  *
- * @modelcontextprotocol/server-github is the canonical reference server. tools/list
- * returns 26 tools — repositories, issues, PRs, commits, reviews, code search. There is
- * NO tool for workflow runs, jobs, logs or artifacts: actionsTools is an empty array.
- * So an MCP-only agent cannot complete this task with its declared capabilities and
- * must shell out regardless. The comparison below is therefore "server + exec" against
- * "`f` + jq", which is what an agent actually ends up with in both cases.
+ * And the MCP server cannot do this job: tools/list has no workflow, job, log or
+ * artifact tool, so the agent shells out through exec anyway. Scroll the declarations
+ * and search for "workflow" — the only hit is a run URL inside a repository field.
  *
- * Earlier revisions used @modelcontextprotocol/server-filesystem for this. It cannot
- * fetch a log either — it only sees a root directory — so those numbers described a
- * job nobody was doing.
- *
- * WHY THIS IS THE ARGUMENT FOR `f` ANYWAY
- *
- * Not because `f` is cheaper here — it is not, on this workload. Because a uck is
- * editable source: `f gh` can grow a projection in the repo that owns it. A tool list
- * is whatever upstream shipped, and a missing capability means waiting on someone
- * else's roadmap or bolting on a shell.
- *
- * The text that scrolls is reconstructed; every token figure is measured, with
- * scripts/measure-gh-log.mjs, against live GitHub API responses from fclidev/fcli and
- * a live tools/list from the server. o200k_base.
+ * Regenerate: npm run measure:session
  */
+import session from "../data/session-comparison.json";
 
-// scripts/measure-gh-log.mjs — run: npm run measure:gh
-const MCP = {
-  server: "@modelcontextprotocol/server-github",
-  tools: 26,
-  resident: 3546,
-  actionsTools: 0,
-  execCall: 65,
-};
+const fmt = (v) => Number(v).toLocaleString();
+const side = (s) => ({
+  defs: s.metrics.defs,
+  total: s.metrics.total,
+  turns: s.turns,
+  cum: s.metrics.cum,
+  tools: s.tools,
+  system: s.system,
+});
+const MCP = side(session.mcp);
+const F = side(session.f);
 
-const F = {
-  bashDef: 44,
-  jqDef: 61,
-  index: 57,
-};
-
-// The payloads both sides must swallow, measured from live responses.
-const PAYLOAD = {
-  runs: { tokens: 12573, bytes: 45368, useful: 224, fields: 35 },
-  jobs: { tokens: 1721, bytes: 5383 },
-  logs: { tokens: 10570, bytes: 23769 },
-};
-const payloadTotal = PAYLOAD.runs.tokens + PAYLOAD.jobs.tokens + PAYLOAD.logs.tokens;
-
-const mcpTotal = MCP.resident * 3 + MCP.execCall + payloadTotal;
-const fTotal = (F.bashDef + F.jqDef + F.index) * 3 + payloadTotal;
-
-const pct = (a, b) => Math.round((a / b) * 100);
+// The visible-text total is the honest one: it is what the reader could sum by hand.
+const diff = MCP.total - F.total;
 ---
 
 <div class="compare">
   <p class="compare-job">
-    One job, both ways: find the failing Actions run, find its failed job, read the log.
-    Counters are cumulative token payload, measured against live GitHub API responses.
-    The scrolling text is a realistic reconstruction, not a recording.
+    Both sides, one job: find the failing Actions run, its failed job, and read the log.
+    Full text, nothing truncated — the volume is the argument. Tool definitions are real
+    (tools/list, 26 tools); API bodies are synthesized to the live schema. Every token
+    figure below is <code>o200k_base</code> over the text you are reading.
   </p>
 
   <div class="compare-panes">
-    <section class="compare-col" aria-label="Simulated session using the GitHub MCP server">
-      <p class="compare-head">
-        <span class="compare-svc">MCP</span>
-        <span class="compare-sub">{MCP.tools} tools + exec</span>
-        <span class="compare-count" data-count-for="mcp" data-count-to={mcpTotal}><b>{mcpTotal.toLocaleString()}</b> tokens</span>
-      </p>
-      <div class="stream" data-stream="mcp">
-        <div class="turn">
-          <p class="turn-h">tools resident <span>{" "}{MCP.resident.toLocaleString()}</span></p>
-          <pre class="ln body">tools: get_file_contents, search_repositories,
-       list_commits, get_pull_request, create_issue, …
-       <em>26 tools · 0 that reach Actions</em></pre>
-        </div>
-        <div class="turn">
-          <p class="turn-h">turn 1 <span>{" "}{(MCP.resident * 2 + PAYLOAD.runs.tokens).toLocaleString()}</span></p>
-          <pre class="ln asst">{`{ "tool_use": "exec", "input": { "command":
-  "curl -s $API/actions/runs | jq -c '[.workflow_runs[]
-   | {name, head_branch, status, conclusion}]'" } }`}</pre>
-          <pre class="ln tool">{"[fcli] main success\n[fcli] main success\n[ci] main failure"}</pre>
-        </div>
-        <div class="turn">
-          <p class="turn-h">turn 2 <span>{" "}{mcpTotal.toLocaleString()}</span></p>
-          <pre class="ln asst">{`{ "tool_use": "exec", "input": { "command":
-  "curl -s $API/actions/runs/39148294696/jobs | jq …" } }`}</pre>
-          <pre class="ln tool">{"build  failure\nlint   success"}</pre>
-          <pre class="ln asst">{`{ "tool_use": "exec", "input": { "command":
-  "curl -sL $API/actions/jobs/117736555994/logs | gunzip
-   | tail -400" } }`}</pre>
-        </div>
-      </div>
-      <p class="compare-note">
-        No declared tool covers Actions — {" "}
-        <code>actions/list_runs</code> would have to exist. The agent shells out anyway,
-        so the server's {MCP.resident.toLocaleString()} tokens buy a capability this job
-        does not use.
-      </p>
-    </section>
+    {[{ key: "mcp", label: "MCP", sub: `${MCP.tools.length} tools + exec`, data: MCP }, { key: "f", label: "f", sub: "bash + jq + index", data: F }].map((p) => (
+      <section class={"compare-col side-" + p.key} aria-label={`Session using ${p.label}`}>
+        <p class="compare-head">
+          <span class={"compare-svc" + (p.key === "f" ? " f" : "")}>{p.label}</span>
+          <span class="compare-sub">{p.sub}</span>
+          <span class="compare-count" data-count-for={p.key} data-count-to={p.data.total}><b>{fmt(p.data.total)}</b> tokens</span>
+        </p>
 
-    <section class="compare-col" aria-label="Simulated session using f">
-      <p class="compare-head">
-        <span class="compare-svc f">f</span>
-        <span class="compare-sub">2 tools + index</span>
-        <span class="compare-count" data-count-for="f" data-count-to={fTotal}><b>{fTotal.toLocaleString()}</b> tokens</span>
-      </p>
-      <div class="stream" data-stream="f">
-        <div class="turn">
-          <p class="turn-h">tools resident <span>{" "}{F.bashDef + F.jqDef + F.index}</span></p>
-          <pre class="ln body">tools: bash, jq
-$ f
-config creds df fj gh ha providers search uck</pre>
+        <div class="stream" data-stream={p.key}>
+          <!-- The resident block: what every request pays before the model speaks. -->
+          <div class="turn">
+            <p class="turn-h">resident · system + {p.data.tools.length} tools <span>{" "}{fmt(p.data.defs)}</span></p>
+            <pre class="ln body">{"system: " + p.data.system}</pre>
+            {p.data.tools.map((t) => (
+              <pre class="ln tooldef">{JSON.stringify(t, null, 1)}</pre>
+            ))}
+          </div>
+
+          {p.data.turns.map((t, i) => (
+            <div class="turn">
+              <p class="turn-h">turn {i + 1} · cumulative <span>{" "}{fmt(p.data.cum[i])}</span></p>
+              {t.user && <pre class="ln user">{"user: " + t.user}</pre>}
+              {t.assistant && <pre class="ln asst-text">{t.assistant}</pre>}
+              {t.call && <pre class="ln call">{JSON.stringify(t.call, null, 1)}</pre>}
+              {t.result && <pre class="ln result">{t.result}</pre>}
+            </div>
+          ))}
         </div>
-        <div class="turn">
-          <p class="turn-h">turn 1 <span>{" "}{((F.bashDef + F.jqDef + F.index) * 2 + PAYLOAD.runs.tokens).toLocaleString()}</span></p>
-          <pre class="ln asst">{`{ "tool": "bash", "input": { "command":
-  "f gh GET /repos/fclidev/fcli/actions/runs?per_page=3" } }`}</pre>
-          <pre class="ln tool">
-<em>{PAYLOAD.runs.tokens.toLocaleString()} tokens come back.</em> The runs endpoint
-returns {PAYLOAD.runs.fields} fields per run — <code>repository</code> and
-<code>head_repository</code> are the same object twice.</pre>
-        </div>
-        <div class="turn">
-          <p class="turn-h">turn 2 <span>{" "}{fTotal.toLocaleString()}</span></p>
-          <pre class="ln asst">{`{ "tool": "bash", "input": { "command":
-  "f gh GET …/actions/runs/39148294696/jobs" } }`}</pre>
-          <pre class="ln tool">{PAYLOAD.jobs.tokens.toLocaleString()} more.</pre>
-          <pre class="ln asst">{`{ "tool": "bash", "input": { "command":
-  "f gh GET …/actions/jobs/117736555994/logs" } }`}</pre>
-          <pre class="ln tool">{PAYLOAD.logs.tokens.toLocaleString()} more.</pre>
-        </div>
-      </div>
-      <p class="compare-note">
-        <code>f gh</code> forwards and prints. It has no projection — a <code>--jq</code>{" "}
-        flag is accepted and ignored — so the model must pipe, and <code>jq</code> has to
-        be a tool.
-      </p>
-    </section>
+      </section>
+    ))}
   </div>
 
-  <table class="cache-table">
-    <caption>
-      Where the tokens actually went, both sides. Payload is what GitHub returned;
-      overhead is definitions and discovery, counted across 3 turns.
-    </caption>
-    <thead>
-      <tr>
-        <th scope="col">Term</th>
-        <th scope="col">MCP</th>
-        <th scope="col">f</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <th scope="row">API payload</th>
-        <td>{payloadTotal.toLocaleString()}</td>
-        <td>{payloadTotal.toLocaleString()}</td>
-      </tr>
-      <tr>
-        <th scope="row">Definitions + index × 3</th>
-        <td>{(MCP.resident * 3).toLocaleString()}</td>
-        <td>{((F.bashDef + F.jqDef + F.index) * 3).toLocaleString()}</td>
-      </tr>
-      <tr>
-        <th scope="row">Total</th>
-        <td>{mcpTotal.toLocaleString()}</td>
-        <td>{fTotal.toLocaleString()}</td>
-      </tr>
-    </tbody>
-  </table>
-
   <p class="compare-verdict">
-    The payload is <b>{pct(payloadTotal, mcpTotal)}%</b> of the{" "}
-    <b>{mcpTotal.toLocaleString()}</b> an MCP session spends, and{" "}
-    <b>{pct(payloadTotal, fTotal)}%</b> of the <b>{fTotal.toLocaleString()}</b> that{" "}
-    <code>f</code> spends. Discovery is the remainder, and on this job it barely
-    registers. What <em>does</em> register: <code>f gh</code> cannot project, so the
-    model pays {PAYLOAD.runs.tokens.toLocaleString()} tokens for the{" "}
-    {PAYLOAD.runs.useful.toLocaleString()} tokens of run metadata it needed. A uck is
-    editable source — that projection is a change to one file here — while a tool list
-    is whatever upstream shipped, and the canonical GitHub server has{" "}
-    <b>no Actions tool at all</b>.{" "}
+    Same job, same answer. <b>{fmt(MCP.total)}</b> against <b>{fmt(F.total)}</b> — the{" "}
+    <b>{fmt(diff)}</b> difference is declarations and index, paid once per turn. What
+    both pay, every turn, is the payload: {fmt(session.mcp.metrics.turns[1].result)}{" "}
+    tokens for three runs whose useful content is eight fields, because{" "}
+    <code>repository</code> and <code>head_repository</code> are the same 46-key object
+    twice. <code>f gh</code> cannot project — no flag exists — so the model reads all of
+    it; and the GitHub MCP server has <b>no Actions tool at all</b>, so it shells out
+    through <code>exec</code> regardless. A uck is editable source: the projection is one
+    file in this repo.{" "}
     <a href="/docs/measurements/">how these were measured</a>
   </p>
 </div>
