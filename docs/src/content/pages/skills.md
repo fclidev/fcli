@@ -87,4 +87,4 @@ does with `default.md`.
 
 Ucks and skills are configured the same way — a source in `f.config.json`,
 installed into `~/.f/ucks/` — so shipping a uck and its documentation together
-is one commit in one repo. See [Ucks](/ucks/).
+is one commit in one repo. See [Ucks](/docs/ucks/).

@@ -1,227 +1,131 @@
 #!/usr/bin/env node
-"use strict";
+// Post-build assertions about how this site behaves on GitHub Pages, which no part of
+// the Astro build or the link checker knows about.
+//
+// WHAT MOVED OUT OF HERE
+//
+// This file used to also verify internal links, NAV coverage, frontmatter, heading
+// anchors and hashed asset names. Those are gone on purpose: astro-better-link-checker
+// fails the build on a broken link or a dangling #fragment (including the /foo.md links
+// this file checked by hand), the content schema rejects a missing or stubby summary,
+// and route-level assertions catch a page that is not in the sidebar. Keeping a second
+// implementation of each would mean two things to update whenever the site changes shape
+// — which is precisely how the previous setup came to disagree with itself.
+//
+// WHAT REMAINS, AND WHY IT IS NOT REDUNDANT
+//
+// Everything below is about the deployment target rather than the site's content. Astro
+// emits valid HTML and correct links while producing a tree that Pages would serve
+// wrongly, so nothing in the build would notice these.
+//
+// Exit 1 on any problem; npm run check runs this after astro build.
 
-// Build-time checks: every internal link resolves to a built page or asset,
-// every content file is reachable from NAV, frontmatter is well-formed, and the
-// generated reference pages cover exactly the tools in the f being documented.
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const fs = require("fs");
-const path = require("path");
-
-const ROOT = __dirname;
-const DIST = path.join(ROOT, "dist");
-const CONTENT = path.join(ROOT, "content");
-// Must match build.js: og:image is emitted as an absolute URL under this origin.
+const ROOT = fileURLToPath(new URL(".", import.meta.url));
+const DIST = join(ROOT, "dist");
 const SITE = process.env.SITE_ORIGIN || "https://fcli.dev";
 
 const problems = [];
 const fail = (msg) => problems.push(msg);
 
-if (!fs.existsSync(DIST)) fail(`no dist/ — run node build.js first`);
-
-// Pages runs Jekyll over the published tree without this marker, which silently
-// rewrites the site: titles, CSS and the pretty-URL page directories all change
-// and llms.txt stops being copied. Cheap to lose, invisible locally, loud in
-// production — so fail the build rather than discover it from the live site.
-if (fs.existsSync(DIST) && !fs.existsSync(path.join(DIST, ".nojekyll")))
-  fail("dist/.nojekyll missing — Pages will build the site with Jekyll");
-
-function pages() {
-  const found = new Map();
-  const stack = [DIST];
-  while (stack.length) {
-    const dir = stack.pop();
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) stack.push(full);
-      else if (entry.name === "index.html") {
-        const rel = path.relative(DIST, dir).split(path.sep).filter(Boolean);
-        found.set("/" + (rel.length ? rel.join("/") + "/" : ""), full);
-      }
-    }
-  }
-  return found;
-}
-
-const site = pages();
-
-function checkLinks() {
-  for (const [url, file] of site) {
-    const html = fs.readFileSync(file, "utf8");
-    for (const href of new Set(
-      [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]),
-    )) {
-      if (/^(https?:|mailto:)/.test(href)) {
-        if (
-          /^https?:\/\/fcli\.dev/.test(href) &&
-          !href.startsWith(process.env.SITE_ORIGIN || "https://fcli.dev")
-        )
-          fail(`${url}: unexpected fcli.dev origin in ${href}`);
-        continue;
-      }
-      const target = href.split("#")[0];
-      if (!target) continue;
-      if (target.endsWith("/")) {
-        if (!site.has(target)) fail(`${url}: broken internal link ${href}`);
-      } else if (target.startsWith("/")) {
-        if (!fs.existsSync(path.join(DIST, target)))
-          fail(`${url}: missing asset ${href}`);
-      } else {
-        fail(`${url}: relative link escaped to ${href}`);
-      }
-    }
-    for (const m of html.matchAll(/<a href="([^"]*)"[^>]*>/g)) {
-      const href = m[1];
-      // Unconverted sibling links are the risk; authored .md paths are how the
-      // content writes them. Scoped away from absolute http URLs so a legitimate
-      // external link that happens to name a .md file (a GitHub blob path) is not
-      // a failure. Relative links are already rejected by the branch above, and
-      // no internal page URL contains .md — the sitemap confirms it — so the
-      // narrower test cannot hide a real one.
-      if (href.startsWith(SITE) && href.includes(".md"))
-        fail(`${url}: an .md link survived the build (${href})`);
-    }
-    if (/\{#[a-z0-9-]+\}/.test(html))
-      fail(`${url}: heading marker leaked into output`);
-    for (const need of ["style-", "hljs-", "app-"]) {
-      if (!html.includes(`/${need}`))
-        fail(`${url}: no hashed ${need} asset reference`);
-    }
-    if (!/<title>[^<]+<\/title>/.test(html)) fail(`${url}: empty title`);
-    // `layout()` renders both <meta name="description"> and og:description from
-    // one `summary` argument. Dropping that argument from the call left both
-    // attributes empty on every page while every other check stayed green —
-    // search.json reads summary off a different path, so nothing else noticed.
-    if (!/<meta name="description" content="[^"]+"/.test(html))
-      fail(`${url}: empty meta description`);
-    if (!/<meta property="og:description" content="[^"]+"/.test(html))
-      fail(`${url}: empty og:description`);
-    // og:image is not an <a href>, so the link walk above never sees it. A card
-    // pointing at a file that is not in dist/ renders as a blank share with no
-    // error anywhere — so resolve it here, against the same absolute URL a
-    // crawler will request.
-    const ogImg = html.match(/<meta property="og:image" content="([^"]+)"/);
-    if (ogImg) {
-      const abs = ogImg[1];
-      if (!abs.startsWith(SITE + "/"))
-        fail(`${url}: og:image is not an absolute ${SITE} URL — ${abs}`);
-      else if (!fs.existsSync(path.join(DIST, abs.slice(SITE.length))))
-        fail(`${url}: og:image not in dist/ — ${abs}`);
-    }
-  }
-}
-
-// NAV lives in build.js; parse it rather than duplicating it.
-function navEntries() {
-  const src = fs.readFileSync(path.join(ROOT, "build.js"), "utf8");
-  const start = src.indexOf("const NAV = [");
-  if (start < 0) return [];
-  const block = src.slice(start, src.indexOf("function navHtml"));
-  return [...block.matchAll(/\[\s*"([a-z/-]+)"\s*,\s*"[^"]*"\s*\]/g)].map(
-    (m) => m[1],
-  );
-}
-
-function checkNavCoverage() {
-  const nav = navEntries();
-  if (!nav.length) return fail("could not parse NAV from build.js");
-  const navUrls = new Set(
-    nav.map((rel) => (rel === "index" ? "/" : `/${rel}/`)),
-  );
-  for (const url of site.keys()) {
-    if (!navUrls.has(url)) fail(`page not reachable from NAV: ${url}`);
-  }
-  for (const rel of nav) {
-    const url = rel === "index" ? "/" : `/${rel}/`;
-    if (!site.has(url))
-      fail(`NAV points at a missing page: ${url} (content/${rel}.md)`);
-  }
-}
-
-function checkFrontmatter() {
-  const stack = [CONTENT];
-  while (stack.length) {
-    const dir = stack.pop();
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) stack.push(full);
-      if (!entry.name.endsWith(".md")) continue;
-      const raw = fs.readFileSync(full, "utf8");
-      const fm = /^---\n([\s\S]*?)\n---\n/.exec(raw);
-      const rel = path.relative(ROOT, full);
-      if (!fm) {
-        fail(`${rel}: no frontmatter`);
-        continue;
-      }
-      for (const key of ["title", "summary"]) {
-        if (!new RegExp(`^${key}:`, "m").test(fm[1]))
-          fail(`${rel}: frontmatter missing ${key}`);
-      }
-      if (raw.includes("\t")) fail(`${rel}: tab character in markdown`);
-      if (/#\s*\[?\[?todo\]?\]?/i.test(raw))
-        fail(`${rel}: unresolved TODO marker`);
-    }
-  }
-}
-
-// Every article heading must carry an anchor: a page whose headings lost their
-// ids has a toc of dead links and no deep-linkable sections.
-function checkHeadingAnchors() {
-  for (const [url, file] of site) {
-    const html = fs.readFileSync(file, "utf8");
-    const article = /<article[\s\S]*?<\/article>/.exec(html);
-    if (!article) continue;
-    const ids = [...article[0].matchAll(/<(h[1-3])([^>]*)>/g)];
-    const missing = ids.filter((m) => !m[2].includes("id=")).map((m) => m[1]);
-    if (missing.length)
-      fail(
-        `${url}: ${missing.length} heading(s) without an id: ${missing.join(",")}`,
-      );
-    const anchors = ids
-      .map((m) => /id="([^"]+)"/.exec(m[2]))
-      .filter(Boolean)
-      .map((m) => m[1]);
-    const dupes = anchors.filter((a, i) => anchors.indexOf(a) !== i);
-    if (dupes.length)
-      fail(`${url}: duplicate heading ids: ${[...new Set(dupes)].join(",")}`);
-    const toc = [...html.matchAll(/<a href="#([^"]+)"/g)].map((m) => m[1]);
-    for (const t of toc)
-      if (!anchors.includes(t))
-        fail(`${url}: toc link to missing anchor #${t}`);
-  }
-}
-
-function checkExtras() {
-  for (const name of ["search.json", "llms.txt", "sitemap.xml", "robots.txt"]) {
-    const file = path.join(DIST, name);
-    if (!fs.existsSync(file)) fail(`missing ${name}`);
-    else if (fs.statSync(file).size < 20) fail(`${name} looks empty`);
-  }
-  const search = path.join(DIST, "search.json");
-  if (fs.existsSync(search)) {
-    const rows = JSON.parse(fs.readFileSync(search, "utf8"));
-    for (const row of rows) {
-      if (!site.has(row.url))
-        fail(`search.json entry points nowhere: ${row.url}`);
-      if (!row.summary) fail(`search.json entry without summary: ${row.url}`);
-    }
-    if (rows.length !== site.size)
-      fail(`search.json has ${rows.length} rows, site has ${site.size} pages`);
-    console.log(
-      `search: ${rows.length} rows, ${Math.round(fs.statSync(search).size / 1024)} KB`,
-    );
-  }
-}
-
-checkLinks();
-checkHeadingAnchors();
-checkNavCoverage();
-checkFrontmatter();
-checkExtras();
-
-if (problems.length) {
-  process.stderr.write(`check: ${problems.length} problem(s)\n`);
-  for (const p of problems) process.stderr.write(`  ${p}\n`);
+if (!existsSync(DIST)) {
+  console.error(`check: no dist/ — run astro build first`);
   process.exit(1);
 }
-console.log(`check: ok — ${site.size} pages, every internal link resolves`);
+
+// Pages runs Jekyll over the published tree without this marker, which rewrites titles,
+// breaks the pretty-URL directories and stops copying llms.txt. Invisible locally.
+for (const marker of [".nojekyll", "CNAME"]) {
+  if (!existsSync(join(DIST, marker)))
+    fail(`dist/${marker} missing — Pages deployment would be misconfigured`);
+}
+
+// CNAME is the only thing telling Pages that fcli.dev is this site. An empty or wrong
+// file still builds a perfect-looking dist/.
+if (existsSync(join(DIST, "CNAME"))) {
+  const domain = readFileSync(join(DIST, "CNAME"), "utf8").trim();
+  if (domain !== new URL(SITE).hostname)
+    fail(`dist/CNAME is "${domain}", expected ${new URL(SITE).hostname}`);
+}
+
+const htmlFiles = [];
+(function walk(dir) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) walk(full);
+    else if (e.name.endsWith(".html")) htmlFiles.push(full);
+  }
+})(DIST);
+
+for (const file of htmlFiles) {
+  const html = readFileSync(file, "utf8");
+  const url = "/" + file.slice(DIST.length + 1).replaceAll("\\", "/");
+
+  // Pages serves the published root directly, so hand-written asset paths must be
+  // root-absolute. Relative ones work at / and 404 at /foo/.
+  for (const m of html.matchAll(/<(?:link|script)[^>]*\b(?:href|src)="([^"]+)"/g)) {
+    const ref = m[1];
+    if (ref.startsWith("/")) {
+      if (!existsSync(join(DIST, ref))) fail(`${url}: asset not in dist/ — ${ref}`);
+    } else if (!/^(https?:|data:)/.test(ref)) {
+      fail(`${url}: relative asset reference breaks at depth — ${ref}`);
+    }
+  }
+
+  // Empty description/og:description used to ship unnoticed: the layout rendered both
+  // from one argument, and dropping that argument left every page with a blank snippet
+  // while every other check stayed green.
+  if (!/<meta name="description" content="[^"]+"/.test(html))
+    fail(`${url}: empty meta description`);
+  if (!/<meta property="og:description" content="[^"]+"/.test(html))
+    fail(`${url}: empty og:description`);
+
+  // og:image is not an <a href>, so the link checker never inspects it. A card pointing
+  // at a missing file is a blank share with no error anywhere.
+  const ogImg = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+  if (!ogImg) fail(`${url}: no og:image`);
+  else if (!ogImg.startsWith(`${SITE}/`))
+    fail(`${url}: og:image is not an absolute ${SITE} URL — ${ogImg}`);
+  else if (!existsSync(join(DIST, ogImg.slice(SITE.length))))
+    fail(`${url}: og:image not in dist/ — ${ogImg}`);
+}
+
+// search.json is fetched by assets/app.js at the site root; if it is absent or malformed,
+// search silently returns nothing at every keystroke.
+const searchPath = join(DIST, "search.json");
+if (!existsSync(searchPath)) fail("dist/search.json missing — site search is dead");
+else {
+  try {
+    const rows = JSON.parse(readFileSync(searchPath, "utf8"));
+    if (!Array.isArray(rows) || !rows.length) fail("search.json is empty");
+    for (const r of rows)
+      for (const key of ["url", "title", "summary", "body"])
+        if (typeof r[key] !== "string" || !r[key])
+          fail(`search.json entry ${r.url ?? "?"} has no ${key}`);
+    if (rows.length !== htmlFiles.length)
+      fail(`search.json has ${rows.length} entries, dist has ${htmlFiles.length} pages`);
+  } catch (e) {
+    fail(`search.json is not valid JSON — ${e.message}`);
+  }
+}
+
+// llms.txt is what agents fetch instead of the HTML; a bad file here is invisible in a
+// browser and was historically an HTML error page served at that URL.
+const llmsPath = join(DIST, "llms.txt");
+if (!existsSync(llmsPath)) fail("dist/llms.txt missing");
+else {
+  const llms = readFileSync(llmsPath, "utf8");
+  if (llms.includes("<!DOCTYPE") || llms.includes("<html"))
+    fail("llms.txt contains HTML");
+  if (!llms.includes(`${SITE}/`)) fail(`llms.txt has no ${SITE} URLs`);
+}
+
+if (problems.length) {
+  console.error(`check: ${problems.length} problem(s)`);
+  for (const p of problems) console.error(`  ${p}`);
+  process.exit(1);
+}
+console.log(`check: ok — ${htmlFiles.length} pages`);

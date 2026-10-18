@@ -1,52 +1,11 @@
 ---
 page: home
+# Renders src/components/Hero.astro above the article. The hero is markup rather than
+# prose, so it is a component and not a content field — see that file for why.
+hero: true
 title: Overview
 summary: f is a command line interface for LLM agents. Commands are directories with an index.js, discovered by running f rather than declared in a tool schema. Lists what ships, what discovery costs in tokens, and how to extend it.
 ---
-
-!!!hero
-<span class="hero-title"><span>A command line interface</span> <span>for LLM agents</span></span>
-<p class="hero-lede"><code>f</code> puts a machine-readable CLI on your <code>PATH</code>. Commands are discovered by running <code>f</code>, not declared in a tool schema.</p>
-<div class="install">
-  <pre><code id="install-cmd">npm i -g @fcli.dev/f</code></pre>
-  <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy install command">Copy</button>
-</div>
-<div class="terminal" aria-label="Example f session">
-  <div class="term-bar"><i></i><i></i><i></i><span>~/repo</span></div>
-  <pre><code><span class="t-cmd">f</span>
-config     creds      fj        ha         ls         skills     v
-creds      df         gh        ha-ws      pi-models  ssh        w
-
-<span class="t-cmd">f search credential</span>
-creds store credentials (scrypt+AES-GCM,…
-providers list credential providers reg…
-vaultwarden read secrets from a Vaultwar…
-
-<span class="t-cmd">f creds status</span>
-unlocked 8m12s left
-
-<span class="t-cmd">f fj runs newest</span>
-3774 success pull_request fec3afa9 #1291 9m
-3773 failure pull_request 58eb1186 #1291 9m
-
-<span class="t-cmd">f fj joblogs 3773 "--- FAIL"</span>
-build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code></pre>
-</div>
-<div class="uck-wall" aria-label="Ucks from different sources, all answering as f">
-  <p class="uck-group"><span>defaults</span><i>@fcli.dev/ucks, installed on first run</i></p>
-  <div class="uck-row"><code>f creds</code><span>store credentials, encrypted, with a TTL daemon</span></div>
-  <div class="uck-row"><code>f skills</code><span>markdown instructions, loaded into context on demand</span></div>
-  <div class="uck-row"><code>f config</code><span>edit f.config.json with JSONPath</span></div>
-  <div class="uck-row"><code>f uck</code><span>push ucks from the store to a git repo</span></div>
-  <p class="uck-group"><span>additional sources</span><i>added in f.config.json</i></p>
-  <div class="uck-row"><code>f fj</code><span>Forgejo/Gitea — all 491 endpoints of it</span></div>
-  <div class="uck-row"><code>f gh</code><span>GitHub, via @octokit/rest</span></div>
-  <div class="uck-row"><code>f ha</code><span>Home Assistant: states, scenes, automations</span></div>
-  <div class="uck-row"><code>f vaultwarden</code><span>read secrets from a Vaultwarden vault</span></div>
-  <div class="uck-row"><code>f ssh</code><span>ssh/scp/rsync with a key that never touches disk</span></div>
-  <div class="uck-row"><code>f pi-models</code><span>save pi’s model config in the encrypted store</span></div>
-</div>
-!!!
 
 # Home
 
@@ -153,7 +112,7 @@ Two mechanisms limit the blast radius, and neither is a sandbox:
 - Name collisions resolve by source order, not by trust. The later source wins —
   project config is read after global, so a project uck overrides a same-named
   default. Both copies stay installed; only one loads. See
-  [Shadowing](/ucks/#shadowing).
+  [Shadowing](/docs/ucks/#shadowing).
 
 Installing a source means trusting it: `f config add ucks <source>` accepts an
 arbitrary GitHub repo or npm package. See [Config](/config/).
@@ -162,10 +121,10 @@ arbitrary GitHub repo or npm package. See [Config](/config/).
 
 - **Uck** — one unit of `f` functionality: a directory with an `index.js` that
   exports `register(ctx)`. Builtins, extensions, and your own commands are all
-  ucks, differing only in which source installed them. Details: [Ucks](/ucks/).
+  ucks, differing only in which source installed them. Details: [Ucks](/docs/ucks/).
 - **Store** — `~/.f/ucks/<bucket>/`. Every uck `f` has loaded. The bucket name is
   part of the path, so a git-sourced uck sits in its own clone and `git blame`
-  works against installed commands. Layout: [The store](/ucks/#the-store).
+  works against installed commands. Layout: [The store](/docs/ucks/#the-store).
 - **Config** — `f.config.json`, global and project scopes merged, listing uck
   sources and skills. Format and keys: [Config](/config/).
 
@@ -175,7 +134,7 @@ arbitrary GitHub repo or npm package. See [Config](/config/).
 - [Quickstart](/quickstart/) — run `f`, search it, add a uck, run it.
 - [Builtins](/builtins/) — every command present on a fresh install, one section
   each.
-- [Ucks](/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
+- [Ucks](/docs/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
 - [Config](/config/) — source declarations, subset selection, skills.
 - [Credentials](/credentials/) — encrypted store, provider fall-through, miss
   cache, packed files.

@@ -1,0 +1,51 @@
+---
+/**
+ * Sidebar navigation. Labels come from each page's frontmatter `title`, so a page is
+ * named in exactly one place; `order` and grouping live in src/nav.ts.
+ *
+ * `current` is the current slug ("" is impossible — the homepage's slug is "index").
+ * The active test is exact equality, not a prefix test: a prefix match would light up
+ * two entries the moment any page is nested under another, and every page here is one
+ * segment deep, so equality costs nothing today.
+ */
+import { PAGES, urlFor } from "../nav";
+
+interface Props {
+  current: string;
+  titles: Record<string, string>;
+}
+
+const { current, titles } = Astro.props;
+
+// One array because the npm package name is used twice and a typo here is invisible
+// until a visitor clicks it. `issues` shares REPO with `source` on purpose.
+const NPM_PKG = "@fcli.dev/f";
+const REPO = "https://github.com/fclidev/fcli";
+const UCKS_REPO = "https://github.com/fclidev/fcli-ucks";
+const repoLinks = [
+  { label: "npm", href: `https://www.npmjs.com/package/${NPM_PKG}` },
+  { label: "source", href: REPO },
+  { label: "default ucks", href: UCKS_REPO },
+  { label: "issues", href: `${REPO}/issues` },
+];
+---
+
+<nav class="sidebar">
+  <a class="brand" href={urlFor("index")}><b>f</b>cli</a>
+  <p class="tagline">token-efficient CLI for LLMs</p>
+  {
+    PAGES.map((section) => (
+      <section>
+        <h2>{section.title}</h2>
+        {section.items.map((slug) => (
+          <a class={slug === current ? "active" : ""} href={urlFor(slug)}>
+            {titles[slug] ?? slug}
+          </a>
+        ))}
+      </section>
+    ))
+  }
+  <div class="repo">
+    {repoLinks.map((l) => <a href={l.href}>{l.label} ↗</a>)}
+  </div>
+</nav>

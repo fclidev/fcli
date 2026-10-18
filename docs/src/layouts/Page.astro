@@ -1,0 +1,130 @@
+---
+/**
+ * The single page shell. Class names and element order are load-bearing:
+ * assets/app.js queries `article > h1`, `.menu`, `.toc a`, `[data-copy]` and
+ * `.sidebar a[href]`, and toggles `has-copy` / `has-menu` / `nav-open` on <html>
+ * and `current` on toc links. Rename a class here and the search box, the copy
+ * buttons and the mobile menu all stop working with no build error.
+ *
+ * assets/ are referenced with absolute root paths rather than Astro's asset
+ * pipeline. Two reasons. (1) app.js resolves search.json relative to the page, so
+ * the hash-per-page URLs Astro's pipeline produces for a shared script would make
+ * `new URL("search.json", location.href)` resolve against the wrong directory for
+ * any page not at the root. (2) style.css is hand-tuned against
+ * other's cascade order; running them through the bundler risks reordering. The
+ * files live in public/, so GitHub Pages serves them at /style.css etc. and
+ * immutable caching still applies via the Cache-Control in public/_headers.
+ */
+import Sidebar from "../components/Sidebar.astro";
+import Hero from "../components/Hero.astro";
+
+interface Props {
+  /** Frontmatter title. */
+  title: string;
+  /** <meta name="description"> and og:description. Caller picks the fallback:
+   *  frontmatter description, else summary. */
+  description: string;
+  /** This page's slug, for the sidebar active state. */
+  slug: string;
+  /** Absolute canonical path, from urlFor(). */
+  url: string;
+  /** Homepage only: renders <Hero /> above <article> (see Hero.astro). */
+  hero?: boolean;
+  /** toc entries; Page renders depth 2 only. */
+  headings?: { id: string; text: string; level: number }[];
+  /** Homepage, which selects the hero body class. */
+  home?: boolean;
+  /** Sidebar labels: slug -> frontmatter title, for every page in the site. */
+  titles: Record<string, string>;
+}
+
+const {
+  title,
+  description,
+  slug,
+  url,
+  hero,
+  headings = [],
+  home = false,
+  titles,
+} = Astro.props;
+
+// app.js inserts the search box *before the first <h1> inside* <article>, so a hero
+// rendered inside <article> would land under the search box and be styled as prose.
+// Hence a slot of its own, before <article>. `set:html` is deliberate, and safe only
+// because the hero is markup authored in this repo's own index.md and is never
+// reflected back: the fence is lifted out of the markdown body by the caller, and
+// content pages render with HTML disabled so a content file cannot inject markup
+// anywhere else. Do not widen what can reach this prop.
+const tocEntries = headings.filter((h) => h.level === 2);
+const hasToc = tocEntries.length > 0;
+
+// app.js adds `has-hero` / `has-copy` / `has-menu` to <body> at runtime for some of
+// these states, but the toc and hero classes must be present before first paint or
+// the layout reflows; `doc`/`home` is what style.css keys its grid off.
+// `has-copy` is intentionally absent here — app.js sets it once it has found a
+// [data-copy] button, and pre-setting it would flash a copy affordance on pages
+// that have no copy buttons.
+
+const SITE = Astro.site?.href ?? "https://fcli.dev";
+const ogImage = new URL("/og.png", SITE).href;
+// Absolute canonical, as the old generator emitted it. A relative canonical is legal
+// but weaker: the og: and twitter: tags require absolute URLs anyway, and a share
+// crawler that resolves the canonical against the wrong base gets a different page.
+const canonical = new URL(url, SITE).href;
+
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- One stylesheet, not two. The old site shipped style.css + hljs.css; hljs.css
+         carried eleven .hljs-* rules that matched nothing, because the old generator
+         emitted no token spans. Shiki colours tokens with inline styles, so there is
+         nothing for a second sheet to own. Root-absolute rather than relative because
+         these pages live at / and /foo/ alike, and a relative href would ask for
+         /foo/style.css. -->
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body class:list={[home ? "home" : "doc", hasToc && "has-toc", hero && "has-hero"]}>
+    <a class="skip" href="#main">Skip to content</a>
+    <Sidebar current={slug} titles={titles} />
+    <main id="main">
+      <button class="menu" aria-label="Menu">☰ Menu</button>
+      {hero && <Hero />}
+      <article>
+        <slot />
+      </article>
+      <footer>
+        <p>
+          Documentation for <code>f</code>. This page is built by the site generator.
+        </p>
+        <p><a href="https://github.com/fclidev/fcli">site source</a></p>
+      </footer>
+    </main>
+    <aside>
+      {
+        hasToc && (
+          <nav class="toc">
+            <h2>On this page</h2>
+            {tocEntries.map((h) => <a href={`#${h.id}`}>{h.text}</a>)}
+          </nav>
+        )
+      }
+    </aside>
+  </body>
+</html>

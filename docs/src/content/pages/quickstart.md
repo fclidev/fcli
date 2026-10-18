@@ -68,4 +68,4 @@ f up
 f hello kenny
 ```
 
-See [Ucks](/ucks/) for the full contract and [Config](/config/) for sources.
+See [Ucks](/docs/ucks/) for the full contract and [Config](/config/) for sources.

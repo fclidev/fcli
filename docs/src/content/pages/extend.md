@@ -7,7 +7,7 @@ summary: Extend f with npm packages. An extension exports register(ctx) — the 
 
 For ucks you want to version, publish, or depend on, wrap them in an **npm
 package**. Extensions are packages that export a `register(ctx)` function —
-the same contract as [ucks](/ucks.md).
+the same contract as [ucks](/docs/ucks/).
 
 Full Node.js runtime — no sandboxing. Extensions can import each other, call
 `child_process`, hit the network, modify core behavior, whatever.
@@ -104,4 +104,4 @@ No sandbox. No restrictions. Ucks are first-class.
 
 Later sources win. Store ucks load first, then npm sources, so an npm package
 shadows a same-named uck from the store; within each group, project config
-loads after global. See [Ucks](/ucks/) for shadowing.
+loads after global. See [Ucks](/docs/ucks/) for shadowing.

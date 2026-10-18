@@ -1,5 +1,4 @@
 ---
-page: measurements
 title: Measurements
 summary: How every token figure in these docs is produced, what each one covers, and the error bars on it.
 ---

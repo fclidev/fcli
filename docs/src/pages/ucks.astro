@@ -1,0 +1,110 @@
+---
+/**
+ * /ucks/ — ucks published on npm.
+ *
+ * WHY A ROUTE RATHER THAN A CONTENT FILE
+ *
+ * The page's centre is UckRegistry, a component with a script. Astro's .md renderer
+ * cannot import components — only .mdx can — and adding MDX for one page would mean a
+ * second markdown pipeline plus a format that the other eleven pages do not use. The
+ * prose here is short and tightly coupled to the widget ("the list below is fetched
+ * when you load this page"), so keeping them in one file is worth more than uniformity
+ * about where prose lives.
+ *
+ * CONSEQUENCE, STATED SO IT DOES NOT SURPRISE ANYONE
+ *
+ * This page is not in src/content/pages, so it has no content-collection schema:
+ * its title and summary are plain constants below, and nothing enforces the
+ * summary-length rule the schema applies to the others. check.js still asserts the
+ * built page has a non-empty description, so the failure it would catch is caught
+ * after the fact rather than at the source. src/nav.ts lists it as a ROUTE_PAGE so the
+ * collection-vs-nav assertion does not demand a .md file that must not exist.
+ */
+import Page from "../layouts/Page.astro";
+import UckRegistry from "../components/UckRegistry.astro";
+import { allSlugs, urlFor } from "../nav";
+
+const TITLE = "Ucks";
+const SUMMARY =
+  "Ucks published to npm: every package tagged fcli-uck, fetched live from the registry, plus how to install one and where the contract is documented.";
+
+// Entries are { id, text, level } and Page renders level 2 only. Hand-written to match
+// the <h2>s below. Two sources of truth for the toc is a known trade-off of a route
+// page: the content pipeline derives these from the render pass. If a heading is added
+// here, add its slug to this list — check.js verifies every #toc anchor resolves to a
+// real id in the built page, so a mismatch fails the build rather than shipping a dead
+// anchor.
+const TOC = [
+  { id: "installing", text: "Installing", level: 2 },
+  { id: "writing-one", text: "Writing one", level: 2 },
+  { id: "the-default-ucks", text: "The default ucks", level: 2 },
+];
+
+// The sidebar needs labels for every page, including the collection-backed ones, which
+// a route cannot read from astro:content at module scope. allSlugs gives the order; the
+// labels come from a single map so this page cannot drift silently — the worst case is
+// a sidebar label that reads as the slug.
+const LABELS: Record<string, string> = {
+  index: "Overview",
+  install: "Install",
+  quickstart: "Quickstart",
+  ucks: "Ucks",
+  "docs/ucks": "Uck contract",
+  config: "Config",
+  skills: "Skills",
+  credentials: "Credentials",
+  extend: "Extend",
+  update: "Update",
+  recipes: "Recipes",
+  builtins: "Builtins",
+  measurements: "Measurements",
+};
+const titles = Object.fromEntries(allSlugs.map((s) => [s, LABELS[s] ?? s]));
+---
+
+<Page
+  title={TITLE}
+  description={SUMMARY}
+  slug="ucks"
+  url={urlFor("ucks")}
+  titles={titles}
+  headings={TOC}
+>
+  <h1 id="ucks">{TITLE}</h1>
+
+  <p>
+    Ucks published as npm packages. They obey the same <a href="/docs/ucks/">contract</a>
+    as anything in the default store, and installing one puts its commands on <code>f</code>
+    exactly like a bundled uck.
+  </p>
+
+  <p class="note">
+    The list below is fetched from the npm registry when this page loads, so it is current
+    without a site rebuild. It needs JavaScript; the install commands on this page work
+    either way.
+  </p>
+
+  <UckRegistry />
+
+  <h2 id="installing">Installing</h2>
+  <pre><code>f uck add &lt;package-name&gt;</code></pre>
+  <p>
+    <code>f uck add</code> installs the package into the uck store and its commands are
+    available immediately. To refresh everything later, <code>f uck up</code>.
+  </p>
+
+  <h2 id="writing-one">Writing one</h2>
+  <p>
+    A uck that ships on npm is an ordinary package that exports <code>register(ctx)</code>
+    and carries the <code>fcli-uck</code> keyword — that keyword is what puts it in the list
+    above. The contract is short: <a href="/docs/ucks/">Ucks — the contract</a>.
+  </p>
+
+  <h2 id="the-default-ucks">The default ucks</h2>
+  <p>
+    <code>@fcli.dev/ucks</code> ships the commands most people want (<code>creds</code>,
+    <code>config</code>, <code>skills</code>, <code>pi-models</code>, …) and is installed on
+    first run. It is one package tagged <code>fcli-uck</code>, so it appears in the list
+    above like any other.
+  </p>
+</Page>

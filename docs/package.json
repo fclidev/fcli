@@ -2,27 +2,29 @@
   "name": "@fcli.dev/docs",
   "version": "0.1.0",
   "private": true,
-  "description": "Documentation site for f — static HTML, built from content/",
+  "type": "module",
+  "description": "Documentation site for f — static HTML, built with Astro",
   "scripts": {
-    "build": "node build.js",
-    "check": "node build.js && node check.js",
-    "format": "prettier --write assets/*.js build.js check.js README.md \"content/**/*.md\"",
-    "serve": "python3 -m http.server 8080 --directory dist"
+    "build": "astro build",
+    "check": "astro build && node check.js",
+    "dev": "astro dev",
+    "preview": "astro preview"
   },
   "engines": {
     "node": ">=22.14.0"
   },
-  "dependencies": {
-    "highlight.js": "^11.11.1",
-    "markdown-it": "^14.1.0"
-  },
   "devDependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "astro": "^7.4.0",
+    "astro-better-link-checker": "^1.0.1",
     "prettier": "^3.9.9"
   },
   "prettier": {
     "overrides": [
       {
-        "files": ["content/**/*.md"],
+        "files": [
+          "content/**/*.md"
+        ],
         "options": {
           "proseWrap": "preserve"
         }

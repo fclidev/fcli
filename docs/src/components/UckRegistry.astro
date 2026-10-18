@@ -1,0 +1,174 @@
+---
+/**
+ * The uck registry: every npm package tagged `fcli-uck`, fetched in the browser.
+ *
+ * WHY CLIENT-SIDE
+ *
+ * Build-time fetching would mean the list only changes when the site rebuilds, and a
+ * new uck publish does not trigger a docs build. The npm search endpoint sends
+ * `access-control-allow-origin: *`, so the page asks for itself and is current on every
+ * load.
+ *
+ * WHY THE MARKUP IS HERE AND NOT IN THE .md
+ *
+ * Same reason as Hero.astro: this is an interactive widget with a script and
+ * progressively-enhanced states, not prose. Keeping it in a component means the script
+ * is emitted through Astro's normal handling and the markup is not at the mercy of
+ * whatever the markdown pipeline decides to do with raw HTML.
+ *
+ * PROGRESSIVE ENHANCEMENT
+ *
+ * The page is useful with JS disabled: the heading, the explanation and the manual
+ * install instructions are all server-rendered prose. This list is an addition to that,
+ * not a replacement, which is why the container starts with a plain-text "loading"
+ * state rather than being empty and why a failed fetch leaves readable text behind
+ * instead of a blank hole.
+ *
+ * WHY NO FILTER/SEARCH BOX
+ *
+ * Twelve-ish packages at present; a search control over a list that fits on one screen
+ * is UI debt. Revisit if the total gets past ~40.
+ */
+---
+
+<div class="uck-registry" data-endpoint="https://registry.npmjs.org/-/v1/search">
+  <p data-uck-status>Loading packages from npm…</p>
+  <ul data-uck-list hidden></ul>
+</div>
+
+<script>
+  /*
+   * Runs on the element it is declared next to, not on document, so the widget cannot
+   * half-initialise against a different page's markup.
+   *
+   * Deliberately plain JS in a plain <script>: no module, no imports, no build step for
+   * twelve lines of fetch. Astro leaves it alone rather than bundling it, which also
+   * means it runs on every page that includes this component and nowhere else.
+   */
+  for (const root of document.querySelectorAll("[data-uck-registry], .uck-registry")) {
+    const list = root.querySelector("[data-uck-list]");
+    const status = root.querySelector("[data-uck-status]");
+    if (!list || !status) continue;
+
+    const endpoint = root.dataset.endpoint;
+    // keyword rather than scope: a uck under any name is still a uck, while a scope
+    // query would only ever find packages someone chose to publish under @fcli.dev.
+    // No `direction` param: it does not order by publish date the way its name
+    // suggests. Requesting direction=1 for keywords:uck returned 2026-08-21,
+    // 2026-07-19, 2026-09-23, 2026-10-04 — relevance order, not date order. The sort
+    // below is what produces newest-first; a query param claiming to do it would be
+    // both ineffective and a lie about the response.
+    const url = `${endpoint}?text=${encodeURIComponent("keywords:fcli-uck")}&size=50`;
+
+    const fmtDate = (iso) => {
+      const d = new Date(iso);
+      return Number.isNaN(d.valueOf())
+        ? ""
+        : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    };
+
+    // One item per package; built with DOM calls rather than innerHTML += because
+    // name/description come from a third-party registry and must not be parsed as HTML.
+    const row = (pkg) => {
+      const li = document.createElement("li");
+
+      const name = document.createElement("a");
+      name.href = (pkg.links && pkg.links.npm) || `https://www.npmjs.com/package/${pkg.name}`;
+      name.className = "uck-name";
+      name.textContent = pkg.name;
+
+      const ver = document.createElement("code");
+      ver.className = "uck-ver";
+      ver.textContent = pkg.version;
+
+      const head = document.createElement("p");
+      head.append(name, ver);
+      li.append(head);
+
+      if (pkg.description) {
+        const desc = document.createElement("p");
+        desc.className = "uck-desc";
+        desc.textContent = pkg.description;
+        li.append(desc);
+      }
+
+      const when = fmtDate(pkg.date);
+      if (when) {
+        const meta = document.createElement("p");
+        meta.className = "uck-meta";
+        meta.textContent = `published ${when}`;
+        li.append(meta);
+      }
+      return li;
+    };
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`npm replied ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const pkgs = (data.objects || []).map((o) => o.package);
+        list.hidden = false;
+        if (!pkgs.length) {
+          status.textContent =
+            "No packages are tagged fcli-uck yet. Publish one, or see the contract page.";
+          return;
+        }
+        // npm returns relevance order (popularity/quality/maintenance weighted), which
+        // puts established packages first and would bury a uck published yesterday under
+        // the defaults forever. Sorting on the publish date makes the newest work appear
+        // at the top, which is what a list of community packages is for.
+        pkgs.sort((a, b) => new Date(b.date) - new Date(a.date));
+        list.replaceChildren(...pkgs.map(row));
+        const total = typeof data.total === "number" ? data.total : pkgs.length;
+        status.textContent = `${total} package${total === 1 ? "" : "s"} tagged fcli-uck.`;
+      })
+      .catch(() => {
+        // Readable text, not an empty region: the surrounding prose still explains how
+        // to install a uck by hand, which is the whole point of the page.
+        status.textContent =
+          "Could not reach the npm registry. Search npm for the keyword fcli-uck, or run: f uck search";
+      });
+  }
+</script>
+
+<style>
+  .uck-registry {
+    margin: 1.5rem 0;
+  }
+  .uck-registry ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .uck-registry li {
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .uck-registry li > p {
+    margin: 0;
+  }
+  .uck-registry li > p + p {
+    margin-top: 0.3rem;
+  }
+  .uck-name {
+    font-weight: 600;
+  }
+  .uck-ver {
+    margin-left: 0.4rem;
+    font-size: 0.82em;
+    opacity: 0.7;
+  }
+  .uck-desc {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+  }
+  .uck-meta {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+  }
+</style>

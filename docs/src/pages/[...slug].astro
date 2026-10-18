@@ -1,0 +1,86 @@
+---
+/**
+ * One route for the whole site: every file in src/content/pages is a page, and its URL
+ * is urlFor(slug) from src/nav.ts. One file rather than twelve because the per-page
+ * differences are all frontmatter — whether to render the hero, whether the body class
+ * is `home`, whether there is a toc — and duplicating a layout call twelve times means
+ * twelve places to forget a change.
+ *
+ * THE HOMEPAGE SLUG
+ *
+ * content/pages/index.md is the homepage, and Astro reserves src/pages/index.astro for
+ * the root route. There is no index.astro, so this catch-all owns it: index maps to
+ * params.slug === undefined, which Astro emits at /. urlFor("index") returns "/" by the
+ * same single special case, so a divergence between the two shows up as a broken link
+ * in the build, not as a page that 404s.
+ *
+ * WHY entry IS PASSED AND RENDERED HERE RATHER THAN IN getStaticPaths
+ *
+ * Props are serialised between the path-collection phase and the render phase, which
+ * drops entry's methods — entry.render() is undefined in the body even though the same
+ * object had one in getStaticPaths. render(entry) takes the entry as an argument, which
+ * is the documented form, and it also keeps heading slugs and the toc derived from the
+ * same render pass instead of computed twice.
+ */
+import { getCollection, render } from "astro:content";
+import Page from "../layouts/Page.astro";
+import { allSlugs, ROUTE_PAGES, titleFor, urlFor } from "../nav";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("pages");
+  const slugOf = (e: { id: string }) => e.id.replace(/\.md$/, "");
+
+  // Assert against the nav list rather than trusting the glob. A content file missing
+  // from PAGES would build and publish a page nothing links to; a PAGES entry with no
+  // file would ship a dead sidebar link. Both were silent in the old generator, which
+  // is how content/token-measurements.json came to be a file nothing read.
+  const ids = entries.map(slugOf);
+  const missing = allSlugs.filter(
+    (s) => !ids.includes(s) && !ROUTE_PAGES.includes(s),
+  );
+  const orphaned = ids.filter((s) => !allSlugs.includes(s) && !ROUTE_PAGES.includes(s));
+  if (missing.length)
+    throw new Error(`nav lists pages with no content file: ${missing.join(", ")}`);
+  if (orphaned.length)
+    throw new Error(
+      `content files not reachable from the sidebar: ${orphaned.join(", ")}. ` +
+        `Add them to PAGES in src/nav.ts or delete the file.`,
+    );
+
+  // The sidebar labels every entry, on every page, so the whole map is computed once
+  // here rather than re-read per page. Keyed by slug because Sidebar looks up by slug.
+  const titles = Object.fromEntries(entries.map((e) => [slugOf(e), e.data.title]));
+
+  return entries.map((entry) => {
+    const slug = slugOf(entry);
+    return {
+      // index -> / ; everything else -> /<slug>/
+      params: { slug: slug === "index" ? undefined : slug },
+      props: { entry, slug, titles },
+    };
+  });
+}
+
+const { entry, slug, titles } = Astro.props;
+const { Content, headings } = await render(entry);
+
+// Astro's MarkdownHeading[] is { depth, slug, text }. These are the same slugs Astro
+// put on the heading elements, so toc links cannot drift from the anchors — the old
+// generator computed heading ids and toc hrefs separately, and they disagreed silently
+// for any heading containing a link or emphasis. Page renders depth 2 only.
+const toc = headings.map((h) => ({ id: h.slug, text: h.text, level: h.depth }));
+---
+
+<Page
+  title={titleFor(slug, entry.data.title)}
+  description={entry.data.description ?? entry.data.summary}
+  slug={slug}
+  url={urlFor(slug)}
+  titles={titles}
+  hero={entry.data.hero}
+  home={entry.data.page === "home"}
+  headings={toc}
+  toc={entry.data.toc}
+>
+  <Content />
+</Page>

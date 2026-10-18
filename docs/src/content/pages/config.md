@@ -1,6 +1,6 @@
 ---
 title: Config
-summary: f.config.json lists uck sources and skills. Two levels merge: global and project. Edit with f config.
+summary: "f.config.json lists uck sources and skills. Two levels merge: global and project. Edit with f config."
 ---
 
 # Config
@@ -53,7 +53,7 @@ Object fields:
 - `only` / `except` — subset filters, below.
 
 Each source becomes a bucket under `~/.f/ucks/`. A git bucket is the clone of
-that repo; a local bucket is a copy. See [Ucks](/ucks/) for the store.
+that repo; a local bucket is a copy. See [Ucks](/docs/ucks/) for the store.
 
 ### Selecting a subset of a repo
 

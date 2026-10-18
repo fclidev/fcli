@@ -101,7 +101,7 @@ The gap was small enough that the right response was not a new tool but a
 small edit to the uck that already owned Forgejo auth, base-URL
 resolution, and error reporting. That is the contract paying off:
 `f fj` is a directory with an `index.js`
-([the uck contract](/ucks/)), so extending it means editing a file —
+([the uck contract](/docs/ucks/)), so extending it means editing a file —
 no new package, no new config, no deployment. The change landed in
 fcli-ucks and was published with `f uck push fj`:
 

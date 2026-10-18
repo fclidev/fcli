@@ -193,4 +193,4 @@ The eight ucks above are ucks like any other: plain `index.js` files in a repo
 you could fork, not code compiled into the binary. What makes them builtin is
 that they arrive automatically — the first install seeds that repo into the
 global config. Adding your own ucks is the same mechanism pointed at a
-different source: see [Ucks](/ucks/) and [Config](/config/).
+different source: see [Ucks](/docs/ucks/) and [Config](/config/).

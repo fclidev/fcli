@@ -1,0 +1,72 @@
+---
+/**
+ * Homepage hero: title, lede, install command, terminal transcript, uck wall.
+ *
+ * This lives in code rather than in content/index.md because it is markup, not prose:
+ * a gradient title, a copy button wired by `data-copy`, and a transcript whose
+ * column-0 lines (`config  creds  fj …`) cannot survive the indentation rules of a
+ * YAML block scalar. It used to sit in the markdown behind a `!!!hero` fence that a
+ * build step cut out and re-injected with set:html; an mdast plugin cannot do that any
+ * more (the fence is not a single node, and Sätteri offers no source-rewriting hook),
+ * and the two attempts to keep it in markdown both leaked literal `!!!hero` text onto
+ * the page. As a component there is no fence, no set:html, and no channel by which a
+ * content file could inject markup into the page — which is the property the rest of
+ * the pipeline relies on.
+ *
+ * Rendered by Page.astro only when the frontmatter declares `hero: true`, so it cannot
+ * appear on a page by accident.
+ *
+ * The <header class="hero"> wrapper is not decorative: style.css writes its rules as
+ * .hero-title, .hero-lede and so on, which match by class, but the layout's own
+ * `.hero`-related spacing and the has-hero body class hang on this element being
+ * present and named. It used to be emitted by Page.astro around injected markup; here
+ * the component owns it so it cannot be forgotten by a caller.
+ *
+ * Class names here are load-bearing: style.css owns .hero-title, .hero-lede,
+ * .install, .terminal, .uck-wall and friends, and app.js finds the copy button via
+ * [data-copy] and the target via the id on the code element.
+ */
+---
+<header class="hero">
+<span class="hero-title"><span>A command line interface</span> <span>for LLM agents</span></span>
+<p class="hero-lede"><code>f</code> puts a machine-readable CLI on your <code>PATH</code>. Commands are discovered by running <code>f</code>, not declared in a tool schema.</p>
+<div class="install">
+  <pre><code id="install-cmd">npm i -g @fcli.dev/f</code></pre>
+  <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy install command">Copy</button>
+</div>
+<div class="terminal" aria-label="Example f session">
+  <div class="term-bar"><i></i><i></i><i></i><span>~/repo</span></div>
+  <pre><code><span class="t-cmd">f</span>
+config     creds      fj        ha         ls         skills     v
+creds      df         gh        ha-ws      pi-models  ssh        w
+
+<span class="t-cmd">f search credential</span>
+creds store credentials (scrypt+AES-GCM,…
+providers list credential providers reg…
+vaultwarden read secrets from a Vaultwar…
+
+<span class="t-cmd">f creds status</span>
+unlocked 8m12s left
+
+<span class="t-cmd">f fj runs newest</span>
+3774 success pull_request fec3afa9 #1291 9m
+3773 failure pull_request 58eb1186 #1291 9m
+
+<span class="t-cmd">f fj joblogs 3773 "--- FAIL"</span>
+build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code></pre>
+</div>
+<div class="uck-wall" aria-label="Ucks from different sources, all answering as f">
+  <p class="uck-group"><span>defaults</span><i>@fcli.dev/ucks, installed on first run</i></p>
+  <div class="uck-row"><code>f creds</code><span>store credentials, encrypted, with a TTL daemon</span></div>
+  <div class="uck-row"><code>f skills</code><span>markdown instructions, loaded into context on demand</span></div>
+  <div class="uck-row"><code>f config</code><span>edit f.config.json with JSONPath</span></div>
+  <div class="uck-row"><code>f uck</code><span>push ucks from the store to a git repo</span></div>
+  <p class="uck-group"><span>additional sources</span><i>added in f.config.json</i></p>
+  <div class="uck-row"><code>f fj</code><span>Forgejo/Gitea — all 491 endpoints of it</span></div>
+  <div class="uck-row"><code>f gh</code><span>GitHub, via @octokit/rest</span></div>
+  <div class="uck-row"><code>f ha</code><span>Home Assistant: states, scenes, automations</span></div>
+  <div class="uck-row"><code>f vaultwarden</code><span>read secrets from a Vaultwarden vault</span></div>
+  <div class="uck-row"><code>f ssh</code><span>ssh/scp/rsync with a key that never touches disk</span></div>
+  <div class="uck-row"><code>f pi-models</code><span>save pi's model config in the encrypted store</span></div>
+</div>
+</header>
