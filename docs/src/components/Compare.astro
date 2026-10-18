@@ -1,69 +1,114 @@
 ---
 /**
- * Two animated sessions doing the same job, with a running token counter.
+ * Two simulated sessions doing the same job, with a running token counter.
  *
- * READ THIS BEFORE TRUSTING THE ANIMATION
+ * READ THIS BEFORE TRUSTING ANYTHING BELOW
  *
  * The text that scrolls is RECONSTRUCTED. What a model actually emits is not
  * reproducible on demand, so these are realistic sessions of the shape the two
- * architectures produce — not recordings. Calling this a "live replay" would be a lie
- * of the most expensive kind, because it would borrow the authority of a trace.
+ * architectures produce, not recordings. "Live replay" would borrow a trace's
+ * authority and there is no trace. Every token figure is measured: real tools/list
+ * from a live @modelcontextprotocol/server-filesystem session, real `f` output from
+ * the built binary, o200k_base throughout, cross-checked at 260 against the figure
+ * published in /docs/measurements/.
  *
- * What IS measured is every token figure the counters reach: real tools/list from a
- * live @modelcontextprotocol/server-filesystem session, real tool results, real `f`
- * output from the built binary, tokenized with o200k_base.
- * scripts/measure-streams.mjs regenerates them and cross-checks read_text_file at 260
- * against the figure published in /docs/measurements/.
+ * WHAT AN EARLIER VERSION OF THIS FILE GOT WRONG, AND LOUDLY
  *
- * THE FAIRNESS DECISION, STATED IN THE UI
+ * It compared one request and called the result "the cost". A session is many
+ * requests, and it charged MCP's tool definitions at full price on every one of them
+ * while describing f's discovery output as uncachable. Both halves were wrong, in
+ * opposite directions, and they compounded into a 48x headline.
  *
- * f needs a shell tool; no model runs `f` without one. So this is not "schema vs no
- * schema" — both sides carry a tool definition. The real difference is whose
- * capabilities are declared: MCP declares fourteen filesystem tools, f declares one
- * generic runner and relies on knowledge it supplies through the index. The shell
- * definition is paid by both sides and is therefore subtracted from the difference;
- * it is 44 tokens, shown rather than hidden, because a difference that survives
- * subtraction is the difference.
+ * Tool definitions are a cacheable prefix. f's index turns out to be byte-identical
+ * across invocations, so it is cacheable too. The honest unit is not "resident vs
+ * nothing"; it is billed-rate, and that turns out to depend on something neither side
+ * controls — see the minimum below.
  *
- * The animation is the point, not decoration: MCP's cost is that its definition block
- * is present on every turn, which is invisible in a static screenshot and obvious when
- * the counter climbs 2,877 before the model has said anything.
+ * WHY THIS VERSION REFUSES TO PRINT A HEADLINE RATIO
+ *
+ * Published cache minimums are 1,024 tokens for Sonnet and 4,096 for Opus and Haiku
+ * 4.5. Measured prefixes: MCP's 14 filesystem tools plus system prompt are 1,706
+ * tokens; the bash definition plus system prompt that f's side carries are 57.
+ *
+ *   MCP 1,706 tok  clears 1,024 -> caches on Sonnet   |  below 4,096 -> does NOT on Opus/Haiku
+ *   f      57 tok  below  1,024 -> cannot cache on either
+ *
+ * So MCP's cached advantage is real on Sonnet and evaporates on Opus, and f cannot
+ * cache at all — its advantage is not "we cached better", it is that it carries
+ * 1,649 fewer tokens to begin with. A single ratio would be true for one model and
+ * false for another, so the numbers are shown per model instead of averaged into a
+ * number that is precise about nothing.
+ *
+ * Billing arithmetic, from published rates: a cache write costs 1.25x base, a read
+ * 0.1x, and the 5-minute TTL refreshes free on each hit. Over three turns the first
+ * request is a write (more expensive than base, not cheaper) and only turns two and
+ * three are reads. Counting all three at read rate understates MCP by a quarter of
+ * the prefix — which is f's favour, and the kind of error worth hunting precisely
+ * because it flatters you.
  */
 
-// From scripts/measure-streams.mjs.
+// From scripts/measure-streams.mjs, o200k_base.
 const MCP = {
   tools: 14,
+  /** Full tool object, resident in the tools field of every request. */
   defs: 2877,
   calls: [29, 26],
   results: [46, 236],
 };
 const F = {
-  shellDef: 44, // paid by both sides
+  /** One generic shell tool — f registers nothing itself; the harness supplies this. */
+  bashDef: 44,
   index: 57,
   calls: [15, 13],
   results: [42, 15],
 };
 
-// Per-turn cumulative totals the counters animate to. Everything both sides pay (the
-// shell definition) is included on both, so the two columns are directly comparable.
+// Cacheable prefix = the tools field + system prompt, everything before message history.
+const PREFIX = { mcp: 1706, f: 57 };
+const MIN_TOKENS = { sonnet: 1024, opus: 4096 };
+
+const WRITE = 1.25;
+const READ = 0.1;
+const TURNS = 3;
+
+// Cost of the resident prefix across a 3-turn session, in base-input-token
+// equivalents: turn 1 writes, later turns read on a hit, full price on a miss.
+const billed = (prefix, caches) =>
+  caches ? prefix * (WRITE + READ * (TURNS - 1)) : prefix * TURNS;
+
+const cases = [
+  {
+    model: "Sonnet",
+    min: MIN_TOKENS.sonnet,
+    mcp: { caches: PREFIX.mcp >= MIN_TOKENS.sonnet },
+    f: { caches: PREFIX.f >= MIN_TOKENS.sonnet },
+  },
+  {
+    model: "Opus / Haiku 4.5",
+    min: MIN_TOKENS.opus,
+    mcp: { caches: PREFIX.mcp >= MIN_TOKENS.opus },
+    f: { caches: PREFIX.f >= MIN_TOKENS.opus },
+  },
+];
+
 const mcpTurns = [
-  { n: "1", what: "definitions registered", tok: MCP.defs, cum: MCP.defs },
+  { n: "1", what: "14 tool definitions + system", tok: MCP.defs, cum: MCP.defs },
   { n: "2", what: "read_text_file → contents", tok: MCP.calls[0] + MCP.results[0], cum: MCP.defs * 2 + MCP.calls[0] + MCP.results[0] },
   { n: "3", what: "directory_tree → listing", tok: MCP.calls[1] + MCP.results[1], cum: MCP.defs * 3 + MCP.calls[0] + MCP.results[0] + MCP.calls[1] + MCP.results[1] },
 ];
 const fTurns = [
-  { n: "1", what: "bash def + `f` → index", tok: F.shellDef + F.index, cum: F.shellDef + F.index },
-  { n: "2", what: "f creds get prod.db", tok: F.calls[0] + F.results[0], cum: F.shellDef + F.index + F.calls[0] + F.results[0] },
-  { n: "3", what: "f creds status", tok: F.calls[1] + F.results[1], cum: F.shellDef + F.index + F.calls[0] + F.results[0] + F.calls[1] + F.results[1] },
+  { n: "1", what: "bash def + `f` → index", tok: F.bashDef + F.index, cum: F.bashDef + F.index },
+  { n: "2", what: "f creds get prod.db", tok: F.calls[0] + F.results[0], cum: F.bashDef + F.index + F.calls[0] + F.results[0] },
+  { n: "3", what: "f creds status", tok: F.calls[1] + F.results[1], cum: F.bashDef + F.index + F.calls[0] + F.results[0] + F.calls[1] + F.results[1] },
 ];
 const total = (t) => t.at(-1).cum;
-const shellNote = `${F.shellDef} tokens of bash definition are paid by both sides and counted on both`;
+const yes = (b) => (b ? "yes" : "no");
 ---
 
 <div class="compare">
   <p class="compare-job">
-    The same three-turn job, both ways. Counters are measured payloads; the text is a
-    realistic reconstruction, not a recording. {shellNote}.
+    Three turns of one job, both ways. The counters are cumulative tool payload —
+    measured. The text is a realistic reconstruction, not a recording.
   </p>
 
   <div class="compare-panes">
@@ -76,11 +121,10 @@ const shellNote = `${F.shellDef} tokens of bash definition are paid by both side
       <div class="stream" data-stream="mcp">
         <div class="turn">
           <p class="turn-h">turn 1 <span>{mcpTurns[0].cum}</span></p>
-          <pre class="ln body">system: you are an agent with these tools…
-tools: read_text_file, write_file, edit_file,
+          <pre class="ln body">tools: read_text_file, write_file, edit_file,
        create_directory, list_directory, directory_tree,
        move_file, search_files, get_file_info, …
-       <em>14 definitions, every request</em></pre>
+       <em>14 definitions, in every request's tools field</em></pre>
         </div>
         <div class="turn">
           <p class="turn-h">turn 2 <span>{mcpTurns[1].cum}</span></p>
@@ -110,8 +154,7 @@ tools: read_text_file, write_file, edit_file,
       <div class="stream" data-stream="f">
         <div class="turn">
           <p class="turn-h">turn 1 <span>{fTurns[0].cum}</span></p>
-          <pre class="ln body">system: you are an agent with these tools…
-tools: bash
+          <pre class="ln body">tools: bash
 $ f
 f v0.3.3
 config creds df fj gh ha providers search uck</pre>
@@ -132,10 +175,40 @@ config creds df fj gh ha providers search uck</pre>
     </section>
   </div>
 
+  <!-- Caching, stated per model instead as a ratio. The minimum cacheable length is
+       the whole story and it is not a property of either architecture. -->
+  <table class="cache-table">
+    <caption>
+      Cost of the resident prefix over {TURNS} turns, in base-input-token equivalents.
+      Turn 1 is a cache <em>write</em> at {WRITE}× base; later turns read at {READ}×.
+      Prefixes below the minimum cannot be cached at all.
+    </caption>
+    <thead>
+      <tr><th scope="col">Model</th><th scope="col">Min. cacheable</th><th scope="col">MCP {PREFIX.mcp.toLocaleString()} tok</th><th scope="col">f {PREFIX.f} tok</th></tr>
+    </thead>
+    <tbody>
+      {cases.map((c) => (
+        <tr>
+          <th scope="row">{c.model}</th>
+          <td>{c.min.toLocaleString()}</td>
+          <td class={c.mcp.caches ? "cache-hit" : "cache-miss"}>
+            {yes(c.mcp.caches)} · {Math.round(billed(PREFIX.mcp, c.mcp.caches)).toLocaleString()}
+          </td>
+          <td class={c.f.caches ? "cache-hit" : "cache-miss"}>
+            {yes(c.f.caches)} · {Math.round(billed(PREFIX.f, c.f.caches)).toLocaleString()}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
   <p class="compare-verdict">
-    <b>{total(mcpTurns).toLocaleString()}</b> against <b>{total(fTurns)}</b> for three
-    turns. The gap is not the calls — those are {MCP.calls[0]} and {F.calls[0]} tokens —
-    it is {MCP.defs.toLocaleString()} of definitions riding on every turn. 
+    f cannot cache: {PREFIX.f} tokens is under every published minimum. MCP can, but
+    only on Sonnet — {PREFIX.mcp.toLocaleString()} is under Opus's {MIN_TOKENS.opus.toLocaleString()}, and
+    So the difference is not cache strategy. It is that f carries
+    <b>{(PREFIX.mcp - PREFIX.f).toLocaleString()} fewer tokens</b> of prefix and
+    <b>{(MCP.defs - F.bashDef - F.index).toLocaleString()} fewer</b> per turn, on every
+    model, cached or not.{" "}
     <a href="/docs/measurements/">how these were measured</a>
   </p>
 </div>

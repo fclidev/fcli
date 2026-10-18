@@ -825,6 +825,45 @@ body.home article {
   }
 }
 
+.cache-table {
+  width: 100%;
+  max-width: 44rem;
+  margin: 0.9rem 0 0;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.cache-table caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0 0 0.4rem;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+.cache-table th,
+.cache-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cache-table thead th {
+  color: var(--ink-faint);
+  font-weight: 500;
+  border-bottom-color: var(--line-strong);
+}
+.cache-table tbody th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink);
+}
+/* Hit and miss are the whole point of the table, so they are coloured rather than
+   left to the word alone -- and the word stays, so colour is never the only cue. */
+.cache-hit {
+  color: var(--code-str);
+}
+.cache-miss {
+  color: var(--code-err);
+}
 .compare-verdict {
   margin: 0.7rem 0 0;
   font-size: 0.8rem;
