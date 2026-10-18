@@ -7,107 +7,96 @@
  * The text that scrolls is RECONSTRUCTED. What a model actually emits is not
  * reproducible on demand, so these are realistic sessions of the shape the two
  * architectures produce, not recordings. "Live replay" would borrow a trace's
- * authority and there is no trace. Every token figure is measured: real tools/list
- * from a live @modelcontextprotocol/server-filesystem session, real `f` output from
- * the built binary, o200k_base throughout, cross-checked at 260 against the figure
- * published in /docs/measurements/.
+ * authority it would not have: there is no trace to replay. Every token figure is
+ * measured: real tools/list from a live @modelcontextprotocol/server-filesystem
+ * session, real `f` output from the built binary, o200k_base throughout,
+ * cross-checked at 260 against the figure published in /docs/measurements/.
  *
- * WHAT AN EARLIER VERSION OF THIS FILE GOT WRONG, AND LOUDLY
+ * WHY THERE IS NO HEADLINE RATIO
  *
- * It compared one request and called the result "the cost". A session is many
- * requests, and it charged MCP's tool definitions at full price on every one of them
- * while describing f's discovery output as uncachable. Both halves were wrong, in
- * opposite directions, and they compounded into a 48x headline.
+ * Two earlier revisions published one — 77x, then 48x — and both were wrong in the
+ * direction that flattered the claim. A session is many requests, and the definitions
+ * ride on all of them, which means the honest unit is billed-rate after prompt
+ * caching, not "resident vs nothing".
  *
- * Tool definitions are a cacheable prefix. f's index turns out to be byte-identical
- * across invocations, so it is cacheable too. The honest unit is not "resident vs
- * nothing"; it is billed-rate, and that turns out to depend on something neither side
- * controls — see the minimum below.
+ * What kills the single ratio is that caching turns on a published constant neither
+ * architecture controls: minimum cacheable length is 1,024 tokens for Sonnet and 4,096
+ * for Opus and Haiku 4.5. Measured prefixes — the tools field plus system prompt,
+ * everything before message history:
  *
- * WHY THIS VERSION REFUSES TO PRINT A HEADLINE RATIO
+ *   MCP  14 filesystem tools + system   1,706 tok
+ *   f    one shell tool + system            57 tok
  *
- * Published cache minimums are 1,024 tokens for Sonnet and 4,096 for Opus and Haiku
- * 4.5. Measured prefixes: MCP's 14 filesystem tools plus system prompt are 1,706
- * tokens; the bash definition plus system prompt that f's side carries are 57.
+ *   Sonnet  min 1,024: MCP caches  -> 2,474 tok-equivalents | f cannot  -> 171
+ *   Opus    min 4,096: MCP cannot  -> 5,118                 | f cannot  -> 171
  *
- *   MCP 1,706 tok  clears 1,024 -> caches on Sonnet   |  below 4,096 -> does NOT on Opus/Haiku
- *   f      57 tok  below  1,024 -> cannot cache on either
+ * 48x, 14x, 30x — each true under some model and false under another. Averaging them
+ * would produce a number that is precise about nothing, so the table shows them
+ * instead.
  *
- * So MCP's cached advantage is real on Sonnet and evaporates on Opus, and f cannot
- * cache at all — its advantage is not "we cached better", it is that it carries
- * 1,649 fewer tokens to begin with. A single ratio would be true for one model and
- * false for another, so the numbers are shown per model instead of averaged into a
- * number that is precise about nothing.
+ * The 1,024 threshold also means f cannot cache at all, at any model. Its advantage is
+ * not a better cache strategy; it is carrying 1,649 fewer prefix tokens and 2,776 fewer
+ * per turn, cached or not.
  *
  * Billing arithmetic, from published rates: a cache write costs 1.25x base, a read
  * 0.1x, and the 5-minute TTL refreshes free on each hit. Over three turns the first
- * request is a write (more expensive than base, not cheaper) and only turns two and
- * three are reads. Counting all three at read rate understates MCP by a quarter of
- * the prefix — which is f's favour, and the kind of error worth hunting precisely
- * because it flatters you.
+ * request is a write — MORE expensive than base, not cheaper — and only turns two and
+ * three are reads. Counting all three at read rate understates MCP by a quarter of the
+ * prefix, in f's favour. That is the error class worth hunting precisely because it
+ * helps you.
+ *
+ * f registers no tools of its own (the repo is CLI-only); the shell tool below is what
+ * any harness already ships. Both sides pay for it, so it is included on both rather
+ * than subtracted — a difference that survives subtraction is the difference.
  */
 
-// From scripts/measure-streams.mjs, o200k_base.
+// From scripts/measure-streams.mjs.
 const MCP = {
   tools: 14,
-  /** Full tool object, resident in the tools field of every request. */
+  /** Full tool object; resident in the tools field of every request. */
   defs: 2877,
   calls: [29, 26],
   results: [46, 236],
 };
 const F = {
-  /** One generic shell tool — f registers nothing itself; the harness supplies this. */
   bashDef: 44,
   index: 57,
   calls: [15, 13],
   results: [42, 15],
 };
 
-// Cacheable prefix = the tools field + system prompt, everything before message history.
 const PREFIX = { mcp: 1706, f: 57 };
-const MIN_TOKENS = { sonnet: 1024, opus: 4096 };
-
+const MIN = { sonnet: 1024, opus: 4096 };
 const WRITE = 1.25;
 const READ = 0.1;
 const TURNS = 3;
 
-// Cost of the resident prefix across a 3-turn session, in base-input-token
-// equivalents: turn 1 writes, later turns read on a hit, full price on a miss.
-const billed = (prefix, caches) =>
-  caches ? prefix * (WRITE + READ * (TURNS - 1)) : prefix * TURNS;
+// Resident-prefix cost over the session in base-input-token equivalents: turn 1 pays
+// the write, later turns pay the read on a hit, full price on a miss.
+const billed = (prefix, caches) => (caches ? prefix * (WRITE + READ * (TURNS - 1)) : prefix * TURNS);
 
-const cases = [
-  {
-    model: "Sonnet",
-    min: MIN_TOKENS.sonnet,
-    mcp: { caches: PREFIX.mcp >= MIN_TOKENS.sonnet },
-    f: { caches: PREFIX.f >= MIN_TOKENS.sonnet },
-  },
-  {
-    model: "Opus / Haiku 4.5",
-    min: MIN_TOKENS.opus,
-    mcp: { caches: PREFIX.mcp >= MIN_TOKENS.opus },
-    f: { caches: PREFIX.f >= MIN_TOKENS.opus },
-  },
+const rows = [
+  { model: "Sonnet", min: MIN.sonnet, mcpCaches: PREFIX.mcp >= MIN.sonnet, fCaches: PREFIX.f >= MIN.sonnet },
+  { model: "Opus / Haiku 4.5", min: MIN.opus, mcpCaches: PREFIX.mcp >= MIN.opus, fCaches: PREFIX.f >= MIN.opus },
 ];
 
+// Cumulative tool payload per turn — what the counters run to.
 const mcpTurns = [
-  { n: "1", what: "14 tool definitions + system", tok: MCP.defs, cum: MCP.defs },
-  { n: "2", what: "read_text_file → contents", tok: MCP.calls[0] + MCP.results[0], cum: MCP.defs * 2 + MCP.calls[0] + MCP.results[0] },
-  { n: "3", what: "directory_tree → listing", tok: MCP.calls[1] + MCP.results[1], cum: MCP.defs * 3 + MCP.calls[0] + MCP.results[0] + MCP.calls[1] + MCP.results[1] },
+  MCP.defs,
+  MCP.defs * 2 + MCP.calls[0] + MCP.results[0],
+  MCP.defs * 3 + MCP.calls[0] + MCP.results[0] + MCP.calls[1] + MCP.results[1],
 ];
 const fTurns = [
-  { n: "1", what: "bash def + `f` → index", tok: F.bashDef + F.index, cum: F.bashDef + F.index },
-  { n: "2", what: "f creds get prod.db", tok: F.calls[0] + F.results[0], cum: F.bashDef + F.index + F.calls[0] + F.results[0] },
-  { n: "3", what: "f creds status", tok: F.calls[1] + F.results[1], cum: F.bashDef + F.index + F.calls[0] + F.results[0] + F.calls[1] + F.results[1] },
+  F.bashDef + F.index,
+  F.bashDef + F.index + F.calls[0] + F.results[0],
+  F.bashDef + F.index + F.calls[0] + F.results[0] + F.calls[1] + F.results[1],
 ];
-const total = (t) => t.at(-1).cum;
-const yes = (b) => (b ? "yes" : "no");
+const total = (t) => t.at(-1);
 ---
 
 <div class="compare">
   <p class="compare-job">
-    Three turns of one job, both ways. The counters are cumulative tool payload —
+    Three turns of one job, both ways. The counters are cumulative tool payload,
     measured. The text is a realistic reconstruction, not a recording.
   </p>
 
@@ -120,21 +109,21 @@ const yes = (b) => (b ? "yes" : "no");
       </p>
       <div class="stream" data-stream="mcp">
         <div class="turn">
-          <p class="turn-h">turn 1 <span>{mcpTurns[0].cum}</span></p>
+          <p class="turn-h">turn 1 <span>{" "}{mcpTurns[0]}</span></p>
           <pre class="ln body">tools: read_text_file, write_file, edit_file,
        create_directory, list_directory, directory_tree,
        move_file, search_files, get_file_info, …
-       <em>14 definitions, in every request's tools field</em></pre>
+       <em>14 definitions in the request's tools field</em></pre>
         </div>
         <div class="turn">
-          <p class="turn-h">turn 2 <span>{mcpTurns[1].cum}</span></p>
+          <p class="turn-h">turn 2 <span>{" "}{mcpTurns[1].toLocaleString()}</span></p>
           <pre class="ln asst">{`{ "type": "tool_use", "name": "read_text_file",
   "input": { "path": "/tmp/mcpsim/notes/creds.md" } }`}</pre>
           <pre class="ln tool">{`{ "content": [ { "type": "text",
-  "text": "prod.db\n  host: db.internal\n  user: svc\n" } ] }`}</pre>
+  "text": "prod.db\\n  host: db.internal\\n  user: svc\\n" } ] }`}</pre>
         </div>
         <div class="turn">
-          <p class="turn-h">turn 3 <span>{mcpTurns[2].cum}</span></p>
+          <p class="turn-h">turn 3 <span>{" "}{mcpTurns[2].toLocaleString()}</span></p>
           <pre class="ln asst">{`{ "type": "tool_use", "name": "directory_tree",
   "input": { "path": "/tmp/mcpsim", "excludePatterns": [] } }`}</pre>
           <pre class="ln tool">{`{ "content": [ { "type": "text", "text": "[
@@ -149,24 +138,24 @@ const yes = (b) => (b ? "yes" : "no");
       <p class="compare-head">
         <span class="compare-svc f">f</span>
         <span class="compare-sub">1 tool declared</span>
-        <span class="compare-count" data-count-for="f" data-count-to={total(fTurns)}><b>{total(fTurns).toLocaleString()}</b> tokens</span>
+        <span class="compare-count" data-count-for="f" data-count-to={total(fTurns)}><b>{total(fTurns)}</b> tokens</span>
       </p>
       <div class="stream" data-stream="f">
         <div class="turn">
-          <p class="turn-h">turn 1 <span>{fTurns[0].cum}</span></p>
+          <p class="turn-h">turn 1 <span>{" "}{fTurns[0]}</span></p>
           <pre class="ln body">tools: bash
 $ f
 f v0.3.3
 config creds df fj gh ha providers search uck</pre>
         </div>
         <div class="turn">
-          <p class="turn-h">turn 2 <span>{fTurns[1].cum}</span></p>
+          <p class="turn-h">turn 2 <span>{" "}{fTurns[1]}</span></p>
           <pre class="ln asst">{`{ "tool": "bash",
   "input": { "command": "f creds get prod.db" } }`}</pre>
           <pre class="ln tool">prod.db = sk-live-9f2c… (expires in 2h 14m)</pre>
         </div>
         <div class="turn">
-          <p class="turn-h">turn 3 <span>{fTurns[2].cum}</span></p>
+          <p class="turn-h">turn 3 <span>{" "}{fTurns[2]}</span></p>
           <pre class="ln asst">{`{ "tool": "bash",
   "input": { "command": "f creds status" } }`}</pre>
           <pre class="ln tool">unlocked (167m 31s left)</pre>
@@ -175,27 +164,30 @@ config creds df fj gh ha providers search uck</pre>
     </section>
   </div>
 
-  <!-- Caching, stated per model instead as a ratio. The minimum cacheable length is
-       the whole story and it is not a property of either architecture. -->
   <table class="cache-table">
     <caption>
       Cost of the resident prefix over {TURNS} turns, in base-input-token equivalents.
       Turn 1 is a cache <em>write</em> at {WRITE}× base; later turns read at {READ}×.
-      Prefixes below the minimum cannot be cached at all.
+      A prefix shorter than the model's minimum cannot be cached at all.
     </caption>
     <thead>
-      <tr><th scope="col">Model</th><th scope="col">Min. cacheable</th><th scope="col">MCP {PREFIX.mcp.toLocaleString()} tok</th><th scope="col">f {PREFIX.f} tok</th></tr>
+      <tr>
+        <th scope="col">Model</th>
+        <th scope="col">Min. cacheable</th>
+        <th scope="col">MCP {" "}{PREFIX.mcp.toLocaleString()} tok</th>
+        <th scope="col">f {" "}{PREFIX.f} tok</th>
+      </tr>
     </thead>
     <tbody>
-      {cases.map((c) => (
+      {rows.map((r) => (
         <tr>
-          <th scope="row">{c.model}</th>
-          <td>{c.min.toLocaleString()}</td>
-          <td class={c.mcp.caches ? "cache-hit" : "cache-miss"}>
-            {yes(c.mcp.caches)} · {Math.round(billed(PREFIX.mcp, c.mcp.caches)).toLocaleString()}
+          <th scope="row">{r.model}</th>
+          <td>{r.min.toLocaleString()}</td>
+          <td class={r.mcpCaches ? "cache-hit" : "cache-miss"}>
+            {r.mcpCaches ? "caches" : "cannot"} · {Math.round(billed(PREFIX.mcp, r.mcpCaches)).toLocaleString()}
           </td>
-          <td class={c.f.caches ? "cache-hit" : "cache-miss"}>
-            {yes(c.f.caches)} · {Math.round(billed(PREFIX.f, c.f.caches)).toLocaleString()}
+          <td class={r.fCaches ? "cache-hit" : "cache-miss"}>
+            {r.fCaches ? "caches" : "cannot"} · {Math.round(billed(PREFIX.f, r.fCaches)).toLocaleString()}
           </td>
         </tr>
       ))}
@@ -203,11 +195,12 @@ config creds df fj gh ha providers search uck</pre>
   </table>
 
   <p class="compare-verdict">
-    f cannot cache: {PREFIX.f} tokens is under every published minimum. MCP can, but
-    only on Sonnet — {PREFIX.mcp.toLocaleString()} is under Opus's {MIN_TOKENS.opus.toLocaleString()}, and
-    So the difference is not cache strategy. It is that f carries
-    <b>{(PREFIX.mcp - PREFIX.f).toLocaleString()} fewer tokens</b> of prefix and
-    <b>{(MCP.defs - F.bashDef - F.index).toLocaleString()} fewer</b> per turn, on every
+    f cannot cache at any model: its whole prefix is {PREFIX.f} tokens, under every
+    published minimum. MCP caches on Sonnet and cannot on Opus, where its {" "}
+    {PREFIX.mcp.toLocaleString()} tokens fall under the {MIN.opus.toLocaleString()}{" "}
+    minimum. So the difference is not cache strategy: f carries{" "}
+    <b>{(PREFIX.mcp - PREFIX.f).toLocaleString()} fewer prefix tokens</b> and{" "}
+    <b>{(MCP.defs - F.bashDef - F.index).toLocaleString()} fewer per turn</b>, on every
     model, cached or not.{" "}
     <a href="/docs/measurements/">how these were measured</a>
   </p>
