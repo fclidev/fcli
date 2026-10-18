@@ -3,10 +3,20 @@
 
 const root = document.body;
 
+// The sticky sidebar is offset below the topbar by --topbar. The bar's height comes from
+// its own content and font metrics, so a value hard-coded in the stylesheet would be
+// wrong at some viewport or zoom level and clip the first sidebar row; measuring it once
+// keeps the two in step. Nothing re-measures on resize because nothing in the bar wraps
+// at widths where the sidebar is visible (it is hidden below 56rem anyway) -- if a
+// narrower breakpoint ever lets the bar wrap, re-run this on resize.
+const topbar = root.querySelector(".topbar");
+if (topbar) root.style.setProperty("--topbar", `${topbar.offsetHeight}px`);
+
 // Without JS there is no toggle, so the nav must stay visible: hide the button
-// only once a click handler is actually attached.
-const toggle = root.querySelector(".menu");
-if (toggle) {
+// only once a click handler is actually attached. The sidebar is documentation-only,
+// so on every other page there is nothing to open and no button to advertise.
+const toggle = root.querySelector(".page .menu");
+if (toggle && root.classList.contains("has-sidebar")) {
   root.classList.add("has-menu");
   toggle.setAttribute("aria-expanded", "false");
   toggle.addEventListener("click", () => {
@@ -98,11 +108,12 @@ if (searchBox) {
   }
 
   function relativeBase() {
-    const el = document.querySelector(".sidebar a[href]");
-    const href = el
-      ? new URL(el.getAttribute("href"), document.baseURI).pathname
-      : "/";
-    return href.replace(/[^/]*$/, "");
+    // search.json is emitted at the site root (see src/integrations/site-index.ts), so
+    // the answer is a root-absolute path. Deriving it from the first sidebar link used to
+    // work because every link in there is root-absolute, but the sidebar no longer exists
+    // on the homepage, the ucks listing or the error page — so that lookup silently
+    // reached the fallback on exactly the pages where navigation is thinnest.
+    return "/";
   }
 
   function score(page, terms) {

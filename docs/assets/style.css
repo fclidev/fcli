@@ -15,6 +15,13 @@
   --main: 60rem;
   --measure: 52rem;
   --radius: 6px;
+  /* Height reserved for the sticky topbar, so sticky things below it can clear it.
+     Overridden at runtime by app.js to the bar's measured height. The fallback matters:
+     with JS off, or before the defer'd script runs, an un-offset sidebar still sits
+     under the bar rather than jumping once measurement lands. Deliberately a hair under
+     the real height (~2.9rem with 0.7rem padding) so the first sidebar row is not
+     clipped by a pixel before measurement. */
+  --topbar: 2.75rem;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
@@ -53,13 +60,28 @@ body {
     Roboto,
     system-ui,
     sans-serif;
+}
+
+/* The document grid.
+ *
+ * This was <body>, whose children were exactly .skip / nav.sidebar / main / aside. It
+ * moved to a wrapper because the topbar has to span the viewport: as a grid child of
+ * body it would be auto-placed into the `side` track and shift the reading column one
+ * track right. Body is now a plain block column holding .skip, .topbar and .page.
+ *
+ * The state classes (has-toc, has-sidebar, has-hero, has-menu, has-copy, home, doc)
+ * stay on <body>: app.js toggles some at runtime and style.css has always keyed off them
+ * there. Descendant selectors (body:not(.has-toc) .page) therefore reach the grid without
+ * needing :has(), which keeps this working without a modernity assumption for the core
+ * layout. If has-sidebar ever needs the topbar to change shape, use a body class plus a
+ * descendant rule rather than adding a second copy of the class to .page.
+ *
+ * Named lines, not implicit track assignment. .page's children are nav.sidebar, main
+ * and aside, and aside is display:none without a toc -- an absent grid child, unlike an
+ * offscreen one, simply does not claim a track. Placing the real columns by line number
+ * keeps that distinction from mattering. */
+.page {
   display: grid;
-  /* Named lines, not implicit track assignment. The body has four children —
-     .skip, nav.sidebar, main, aside — and .skip is `position: absolute`, which
-     does *not* remove it from grid item participation: it still claims track 1
-     and pushes everything else one column right. Placing the three real columns
-     by line number makes the offscreen skip link irrelevant to layout instead of
-     accidentally absorbed. */
   grid-template-columns:
     [side] var(--sidebar)
     [main] minmax(0, var(--main))
@@ -75,18 +97,69 @@ body {
 main {
   grid-column: main;
 }
-body > aside {
+.page > aside {
   grid-column: toc;
 }
 
-/* The third column exists only when layout() actually emitted a toc. A 13.5rem
-   track was previously reserved on every page, including the 7 with no level-2
-   headings and the landing page — which squeezed the reading column from 60rem
-   to 448px on a 1440px screen. */
-body:not(.has-toc) {
+/* The third column exists only when the layout emitted a toc. A 13.5rem track was
+   previously reserved on every page, including the 7 with no level-2 headings and the
+   landing page -- which squeezed the reading column from 60rem to 448px on a 1440px
+   screen. */
+body:not(.has-toc) .page {
   grid-template-columns: [side] var(--sidebar) [main] minmax(0, var(--main));
 }
-body:not(.has-toc) > aside {
+body:not(.has-toc) .page > aside {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ topbar */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.7rem 2rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+.topbar .brand {
+  font-size: 1.05rem;
+}
+.topbar nav {
+  display: flex;
+  gap: 1.15rem;
+}
+.topbar nav a {
+  color: var(--ink-soft);
+}
+.topbar nav a:hover,
+.topbar nav a:focus-visible {
+  color: var(--ink);
+}
+.topbar nav a.active {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* The sidebar is documentation-only, so the grid has two shapes: with the `side` track
+   and without it. has-sidebar is emitted by Page.astro from the slug, which keeps the
+   class and the element it describes from ever disagreeing. */
+body:not(.has-sidebar) .page {
+  grid-template-columns: [main] minmax(0, var(--main));
+}
+body:not(.has-sidebar) .page > .sidebar {
+  display: none;
+}
+body:not(.has-sidebar).has-toc .page {
+  grid-template-columns: [main] minmax(0, var(--main)) [toc] var(--toc);
+}
+/* The mobile menu button opens the sidebar; with no sidebar there is nothing to open,
+   and app.js adds .has-menu whenever a .menu button exists. */
+body:not(.has-sidebar) .menu {
   display: none;
 }
 
@@ -106,9 +179,13 @@ body:not(.has-toc) > aside {
 
 .sidebar {
   position: sticky;
-  top: 0;
+  /* Offset by the topbar, which is sticky too. At top:0 the sidebar slid under it and
+     scrolled out of sight; at max-height:100vh the bottom of a long tree sat behind the
+     bar and could not be reached. Both values track --topbar so the pair cannot drift
+     apart when the bar's padding changes. */
+  top: var(--topbar);
   align-self: start;
-  max-height: 100vh;
+  max-height: calc(100vh - var(--topbar));
   overflow-y: auto;
   padding: 2.5rem 0 3rem;
   font-size: 0.9rem;
@@ -690,9 +767,13 @@ body.has-hero .search {
 /* ----------------------------------------------------------------- narrow */
 
 @media (max-width: 82rem) {
-  body,
-  body:not(.has-toc) {
+  .page,
+  body:not(.has-toc) .page {
     grid-template-columns: [side] var(--sidebar) [main] minmax(0, var(--main));
+  }
+  /* No sidebar, no `side` track to give back at this width either. */
+  body:not(.has-sidebar) .page {
+    grid-template-columns: [main] minmax(0, 1fr);
   }
   aside {
     display: none;
@@ -700,8 +781,8 @@ body.has-hero .search {
 }
 
 @media (max-width: 56rem) {
-  body,
-  body:not(.has-toc) {
+  .page,
+  body:not(.has-toc) .page {
     grid-template-columns: [main] minmax(0, 1fr);
     padding-inline: 1.25rem;
     gap: 0;
@@ -727,6 +808,12 @@ body.has-hero .search {
   }
   body.has-menu .menu {
     display: inline-block;
+  }
+  /* Specificity guard: `body.has-menu .menu` above is (0,2,1) and would beat the
+     desktop `body:not(.has-sidebar) .menu` rule (0,2,1 too, but earlier in the sheet),
+     putting a menu button on the homepage that opens a sidebar that isn't there. */
+  body:not(.has-sidebar) .menu {
+    display: none;
   }
   main {
     padding-top: 1rem;

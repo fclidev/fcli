@@ -16,6 +16,7 @@
  * immutable caching still applies via the Cache-Control in public/_headers.
  */
 import Sidebar from "../components/Sidebar.astro";
+import Topbar from "../components/Topbar.astro";
 import Hero from "../components/Hero.astro";
 
 interface Props {
@@ -49,15 +50,17 @@ const {
   titles,
 } = Astro.props;
 
-// app.js inserts the search box *before the first <h1> inside* <article>, so a hero
-// rendered inside <article> would land under the search box and be styled as prose.
-// Hence a slot of its own, before <article>. `set:html` is deliberate, and safe only
-// because the hero is markup authored in this repo's own index.md and is never
-// reflected back: the fence is lifted out of the markdown body by the caller, and
-// content pages render with HTML disabled so a content file cannot inject markup
-// anywhere else. Do not widen what can reach this prop.
+// The hero is a component (see Hero.astro), not injected markup, so nothing here takes
+// content as HTML. Class names on the wrapper are load-bearing: style.css styles
+// .hero-title, .terminal and friends.
 const tocEntries = headings.filter((h) => h.level === 2);
 const hasToc = tocEntries.length > 0;
+
+// The sidebar is the documentation tree, so it renders only inside it. Everything else
+// -- homepage, install, quickstart, the npm ucks listing, the 404 page -- navigates
+// through the topbar. Computed from the slug rather than passed in so a new /docs/* page
+// gets the sidebar without anyone remembering to say so.
+const isDocs = slug === "docs/index" || slug.startsWith("docs/");
 
 // app.js adds `has-hero` / `has-copy` / `has-menu` to <body> at runtime for some of
 // these states, but the toc and hero classes must be present before first paint or
@@ -100,31 +103,51 @@ const canonical = new URL(url, SITE).href;
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
   </head>
-  <body class:list={[home ? "home" : "doc", hasToc && "has-toc", hero && "has-hero"]}>
+  <body
+    class:list={[
+      home ? "home" : "doc",
+      hasToc && "has-toc",
+      hero && "has-hero",
+      // style.css lays the page out as a grid with a named `side` column. That column
+      // only exists when the sidebar does, so the class that collapses it travels with
+      // the element rather than being a separate decision someone has to keep in sync.
+      isDocs && "has-sidebar",
+    ]}
+  >
     <a class="skip" href="#main">Skip to content</a>
-    <Sidebar current={slug} titles={titles} />
-    <main id="main">
-      <button class="menu" aria-label="Menu">☰ Menu</button>
-      {hero && <Hero />}
-      <article>
-        <slot />
-      </article>
-      <footer>
-        <p>
-          Documentation for <code>f</code>. This page is built by the site generator.
-        </p>
-        <p><a href="https://github.com/fclidev/fcli">site source</a></p>
-      </footer>
-    </main>
-    <aside>
-      {
-        hasToc && (
-          <nav class="toc">
-            <h2>On this page</h2>
-            {tocEntries.map((h) => <a href={`#${h.id}`}>{h.text}</a>)}
-          </nav>
-        )
-      }
-    </aside>
+    <Topbar current={slug} />
+    <!-- The grid lives here, not on <body>. It used to be body, whose children were
+         exactly .skip / .sidebar / main / aside -- but the topbar must span the full
+         viewport width, and as a grid child of body it would be auto-placed into the
+         `side` track and push the reading column one track right. Keeping body a plain
+         block column and moving the grid down one level leaves every existing selector
+         (.sidebar, main, body > aside) working unchanged, because the elements they name
+         are still siblings at the same depth relative to each other. -->
+    <div class="page">
+      {isDocs && <Sidebar current={slug} titles={titles} />}
+      <main id="main">
+        <button class="menu" aria-label="Menu">☰ Menu</button>
+        {hero && <Hero />}
+        <article>
+          <slot />
+        </article>
+        <footer>
+          <p>
+            Documentation for <code>f</code>. This page is built by the site generator.
+          </p>
+          <p><a href="https://github.com/fclidev/fcli">site source</a></p>
+        </footer>
+      </main>
+      <aside>
+        {
+          hasToc && (
+            <nav class="toc">
+              <h2>On this page</h2>
+              {tocEntries.map((h) => <a href={`#${h.id}`}>{h.text}</a>)}
+            </nav>
+          )
+        }
+      </aside>
+    </div>
   </body>
 </html>

@@ -1,0 +1,62 @@
+---
+/**
+ * /docs/ — the documentation index.
+ *
+ * WHY THIS EXISTS
+ *
+ * The top navbar has one "Docs" item rather than a dropdown of nine pages, which keeps
+ * the bar legible and avoids hover/focus state on a keyboard-driven site. That choice
+ * needs a destination, and a page that lists the documentation is a better one than
+ * /docs/ucks/: linking straight to the contract would imply that page is the front door
+ * when it is the third thing most readers want, after install and quickstart.
+ *
+ * The list is derived from PAGES in src/nav.ts, so a page added to the sidebar appears
+ * here automatically. An index written out by hand would quietly keep linking wherever
+ * the page used to live — the same duplication that made the sidebar labels go stale.
+ *
+ * WHY A ROUTE AND NOT A CONTENT FILE
+ *
+ * It needs to render components (the grouped list) and there is no prose to author;
+ * frontmatter with a title and a generated body would describe nothing.
+ */
+import Page from "../../layouts/Page.astro";
+import { allTitles, LABELS, PAGES, urlFor } from "../../nav";
+
+// Only the documentation sections appear here. "Start" (overview, install, quickstart)
+// is reachable from the logo and the top bar, and repeating it would make this page look
+// like the whole sitemap rather than the docs it indexes.
+const DOC_SECTIONS = PAGES.filter((s) => s.items.every((slug) => slug.startsWith("docs/")));
+---
+
+<Page
+  title="Docs"
+  description="Documentation for f: the uck contract, configuration, credentials, skills, extensions, updating, and the built-in commands."
+  slug="docs/index"
+  url="/docs/"
+  titles={allTitles([])}
+  toc={false}
+>
+  <h1>Docs</h1>
+
+  <p>
+    How <code>f</code> works and how to extend it. Not covered here: what ships on a
+    fresh install, which <a href="/docs/builtins/">Builtins</a> lists command by command,
+    and the <a href="/ucks/">packages published on npm</a>, which is a catalogue rather
+    than a manual.
+  </p>
+
+  {
+    DOC_SECTIONS.map((section) => (
+      <section>
+        <h2>{section.title}</h2>
+        <ul>
+          {section.items.map((slug) => (
+            <li>
+              <a href={urlFor(slug)}>{LABELS[slug] ?? slug}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</Page>

@@ -1,0 +1,52 @@
+---
+/**
+ * Top navbar, rendered on every page.
+ *
+ * WHY IT EXISTS
+ *
+ * The sidebar is now documentation-only, which leaves the homepage, the npm ucks
+ * listing, install, quickstart and the 404 page with no navigation at all. This is
+ * where those reach the rest of the site, and it is also where the external links live:
+ * npm, source, issues were at the bottom of the sidebar, below the fold, and they are
+ * the links most visitors actually want.
+ *
+ * WHY "Docs" IS A LINK AND NOT A DROPDOWN
+ *
+ * A dropdown of nine pages needs hover or focus management, and on touch there is no
+ * hover — so it becomes a button that also has to work as a link. /docs/ is a page that
+ * lists the same nine, costs nothing, and is linkable. The trade is one extra click from
+ * the homepage to any doc, which this page's whole purpose is to absorb.
+ *
+ * ACTIVE STATE
+ *
+ * Docs is active for anything under /docs/ including /docs/ itself. Nothing else in the
+ * bar has an active state: ucks is a single page and the GitHub/npm items leave the site,
+ * where an active state would imply they were views of it.
+ */
+import { urlFor } from "../nav";
+
+interface Props {
+  /** Current slug, "" for the homepage. */
+  current: string;
+}
+
+const { current } = Astro.props;
+const inDocs = current === "docs/index" || current.startsWith("docs/");
+
+const NPM_PKG = "@fcli.dev/f";
+const REPO = "https://github.com/fclidev/fcli";
+
+const external = [
+  { label: "GitHub", href: REPO },
+  { label: "npm", href: `https://www.npmjs.com/package/${NPM_PKG}` },
+];
+---
+
+<header class="topbar">
+  <a class="brand" href={urlFor("index")}><b>f</b>cli</a>
+  <nav aria-label="Site">
+    <a class={inDocs ? "active" : ""} href="/docs/">Docs</a>
+    <a class={current === "ucks" ? "active" : ""} href={urlFor("ucks")}>Ucks</a>
+    {external.map((l) => <a href={l.href}>{l.label}</a>)}
+  </nav>
+</header>

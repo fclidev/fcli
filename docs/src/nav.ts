@@ -55,7 +55,7 @@ export const allSlugs: string[] = PAGES.flatMap((s) => s.items);
  * Adding a slug here without creating src/pages/<slug>.astro produces a 404, which the
  * link checker catches; adding a route without listing it here produces a build error.
  */
-export const ROUTE_PAGES: string[] = ["ucks"];
+export const ROUTE_PAGES: string[] = ["docs/index", "ucks"];
 
 /**
  * Pages that exist and are published but are deliberately absent from the sidebar.
@@ -90,7 +90,7 @@ export const LABELS: Record<string, string> = {
   install: "Install",
   quickstart: "Quickstart",
   ucks: "Ucks",
-  "docs/ucks": "Uck contract",
+  "docs/ucks": "Ucks",
   "docs/config": "Config",
   "docs/skills": "Skills",
   "docs/credentials": "Credentials",
