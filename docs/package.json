@@ -8,7 +8,9 @@
     "build": "astro build",
     "check": "astro build && node check.js",
     "dev": "astro dev",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "measure:streams": "node scripts/measure-streams.mjs",
+    "measure:gh": "node scripts/measure-gh-log.mjs"
   },
   "engines": {
     "node": ">=22.14.0"
