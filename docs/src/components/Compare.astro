@@ -1,0 +1,92 @@
+---
+/**
+ * The hero comparison: the same job asked of an MCP server and of `f`.
+ *
+ * WHY TWO PANES RATHER THAN A TABLE
+ *
+ * index.md already carries the per-capability table (5 tokens to write the call,
+ * 260 of definition) and it should keep it -- that is the precise, quotable form.
+ * What a table cannot show is shape. The argument is not "f is cheaper" in the
+ * abstract; it is that the MCP request body is mostly schema and the `f` request
+ * body is mostly the thing you asked for. Two panes of what actually goes over the
+ * wire make that visible in the way a row of numbers does not.
+ *
+ * WHERE THE NUMBERS COME FROM
+ *
+ * Every figure is produced by docs/scripts/measure-comparison.mjs against a live
+ * server (a real `tools/list` response from @modelcontextprotocol/server-filesystem,
+ * 14 tools) and the committed snapshot from scripts/count-tokens.mjs for the `f` side,
+ * both tokenized with o200k_base. Nothing here is typed by hand: re-run the script and
+ * edit what it says. It reproduces the 260 tokens already published on
+ * /docs/measurements/ for read_text_file, which is the check that this method matches
+ * the audited one, and its 61 tokens / 16 ucks / 3.8 per uck are the same triple
+ * /index.md quotes.
+ *
+ * WHAT IS DELIBERATELY NOT CLAIMED
+ *
+ * The MCP pane is one server. Twenty servers cost more; that is the scaling
+ * argument on /docs/measurements/, not this one. The `f` pane is not free either:
+ * 54 tokens of index is paid once per session and it grows with the store. Both
+ * numbers appear below so the comparison cannot be read as "f costs nothing".
+ *
+ * Also unstated because it is false: the MCP pane does not show the tool *result*,
+ * and neither does the `f` pane show command output. Output is output on both
+ * sides and is not what differs.
+ */
+
+// Produced by scripts/measure-comparison.mjs -- values there, not invented here.
+const MCP = {
+  server: "@modelcontextprotocol/server-filesystem",
+  tools: 14,
+  resident: 2877,
+  meanPerTool: 205.5,
+  min: 153,
+  max: 294,
+  largestTool: "read_media_file",
+  largestTokens: 294,
+};
+
+const F = {
+  ucks: 16,
+  indexOnce: 61,
+  call: 5,
+  perUckMean: 3.8,
+};
+---
+
+<!-- Two panels of related content, not a data table. role="table" was wrong here: the
+     bodies are code blocks and sentences rather than cells, so a screen reader would
+     announce a grid of two columns with no rows and read the prose as cell values. As a
+     list of two labelled items, the relationship (same job, two ways) is stated in the
+     aria-label and each pane reads as itself. -->
+<ol class="compare" aria-label="The same job, asked of an MCP server and of f">
+  <li class="compare-col">
+    <p class="compare-head">
+      <span class="compare-svc">MCP</span>
+      <span class="compare-sub">{MCP.server}</span>
+    </p>
+    <pre class="compare-body"><code>{`{
+  "type": "tool_use",
+  "name": "read_text_file",
+  "input": { "path": "notes.md" }
+}`}</code></pre>
+    <p class="compare-foot">
+      <b>{MCP.resident.toLocaleString()}</b> tokens resident in the body of every
+      request — {MCP.tools} tools × {MCP.meanPerTool} mean, {MCP.min}–{MCP.max} each.
+      {MCP.largestTokens} of that is <code>{MCP.largestTool}</code> alone
+      (read_text_file, the tool compared below, is {260}).
+    </p>
+  </li>
+
+  <li class="compare-col">
+    <p class="compare-head">
+      <span class="compare-svc f">f</span>
+      <span class="compare-sub">{F.ucks} ucks in store</span>
+    </p>
+    <pre class="compare-body"><code>f creds get prod.db</code></pre>
+    <p class="compare-foot">
+      <b>{F.indexOnce}</b> tokens, once, for all {F.ucks} command names
+      ({F.perUckMean} each). Between invocations: nothing serialized.
+    </p>
+  </li>
+</ol>

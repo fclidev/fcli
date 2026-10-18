@@ -562,6 +562,84 @@ body.home article {
    sits in one column and answers the same way. Group headings name the origin to
    show provenance without turning the list into a table. Semantic rows (not a
    <pre>) so it reflows, stays selectable, and reaches llms.txt as text. */
+/* ------------------------------------------------------------- hero compare */
+
+/* Two panes, side by side only when both can be read at once. Stacking them below
+   the width where that stops being true is the whole point of comparing: a reader
+   scanning the MCP pane should see the f pane at the same moment, and two columns
+   at 20rem each read as a comparison while two columns at 12rem read as noise. */
+.compare {
+  list-style: none;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.compare-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.compare-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.compare-svc {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.compare-svc.f {
+  background: var(--code-bg);
+  color: var(--code-ink);
+}
+.compare-sub {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
+/* Shares the transcript's palette: this is request-body content, and reading it as
+   code is the correct affordance. */
+.compare-body {
+  margin: 0;
+  padding: 0.7rem 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--code-ink);
+  background: var(--code-bg);
+  border-radius: 6px;
+}
+.compare-foot {
+  margin: auto 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.compare-foot b {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+@media (max-width: 56rem) {
+  .compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .uck-wall {
   max-width: 34rem;
   margin: 1.75rem 0 0;
