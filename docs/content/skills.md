@@ -6,8 +6,8 @@ summary: A skill is a named pointer to a local markdown file. Skills load into a
 # Skills
 
 A **skill** is a named pointer to a local markdown file — a chunk of
-instructions you read into context when it is relevant, instead of paying for
-it on every prompt.
+instructions you read into context when it is relevant, rather than holding
+it up front in every prompt.
 
 ```json
 // f.config.json

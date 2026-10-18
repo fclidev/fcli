@@ -33,10 +33,10 @@ names.
 
 For MCP-side scale, one capability measured both ways. Reading a file by path:
 
-|                           | `f creds get prod.db` | MCP `read_text_file` |
-| ------------------------- | --------------------: | -------------------: |
-| Tokens to issue the call  |                     5 |                    5 |
-| Definition, every request |                     2 |                  260 |
+|                        | `f creds get prod.db` | MCP `read_text_file` |
+| ---------------------- | --------------------: | -------------------: |
+| To write the call      |                     5 |                    5 |
+| Definition in the body |                     2 |                  260 |
 
 `read_text_file` is that server's largest tool — 97 of its 260 tokens are prose —
 and it is quoted in full, with the harness and error bars, in

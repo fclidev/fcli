@@ -62,42 +62,64 @@ f creds get prod.db
 5 tokens to write that call. 2 tokens describe it. Here is what an MCP tool for
 the same job costs:
 
-|                           | `f creds get prod.db` | `read_text_file` |
-| ------------------------- | --------------------: | ---------------: |
-| Tokens to issue the call  |                     5 |                5 |
-| Definition, every request |                     2 |              260 |
+|                       | `f creds get prod.db` | `read_text_file` |
+| --------------------- | --------------------: | ---------------: |
+| To write the call     |                     5 |                5 |
+| Definition in the body|                     2 |              260 |
 
-Same 5 tokens to ask for the thing. Then 260 tokens describe that tool on every
-request, whether or not the model uses it, against 2 tokens describing this one.
+Same 5 tokens to ask for the thing. Then 260 tokens of definition ride along in
+the request body whether or not the model uses it — cached or not — against 2
+tokens describing this one. What caching does and does not do with that 260 is
+in [Measurements](/measurements/).
 
-The `f` index — every command name, one grid — costs 61 tokens for 16 ucks, and
-is paid once per session. A tool definition is paid on every request. Per
-capability: 3.8 tokens against 174.2, a mean across the filesystem server's 14
-tools. What that number covers, and how far off it might be, is in
-[Measurements](/measurements/).
+The `f` index — every command name, one grid — costs 61 tokens for 16 ucks and
+is paid once per session. A tool definition instead sits in the request body on
+every call, cached or not; per capability that is 3.8 tokens against 174.2, the
+mean across the filesystem server's 14 tools.
 
 ## Context cost against MCP
 
-An MCP tool definition is sent with every request, whether or not the model
-calls it. `f` sends a name index once and pays for descriptions only on the ucks
-a query returns.
+There are two separate costs, and they behave differently under prefix caching.
 
-|                                     | `f`                 | MCP                                      |
-| ----------------------------------- | ------------------- | ---------------------------------------- |
-| Cost per capability, always present | 1–2 tokens (a name) | 77.6–963 tokens (full definition)        |
-| What is always present              | name                | name, description, input + output schema |
-| Who sets the size                   | the command name    | the author of the description            |
-| When it is paid                     | once per session    | every request                            |
-| A capability never called costs     | 1–2 tokens          | its full definition, every request       |
-| Host process                        | none — one binary   | installed, configured, running           |
+**Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
+caching removes that: the tool definitions are tokenized into the model once, and
+a later request that repeats the same bytes skips the reprocessing. If the
+definitions are stable, their compute cost is paid once.
 
-Per-tool cost in the wild ranges from 77.6 tokens to 963 — a factor of 12 across
-servers — so there is no single multiplier to quote. A single definition, quoted
-in full on the [README](https://github.com/fclidev/fcli), is the clearest way to
-see where that money goes. Adding 56 such tools to a 200k window costs 16.9% of
-it, before the first user message.
+**The bytes are still there.** The API is stateless, so every request carries the
+tool list in its body, and the model only "knows" a tool exists because it is in
+the tokens it is being fed right now. Caching discounts the rate, not the
+presence: cached input is billed at 10% of base on Anthropic, up to 95% off on
+OpenAI, against 100% on a miss.
 
-Sources, method and error bars: [Measurements](/measurements/).
+|                        | `f`                          | MCP, cached            | MCP, uncached |
+| ---------------------- | ---------------------------- | ---------------------: | ------------: |
+| In the body, per request | never (names are runtime output) | full definition      | full definition |
+| Re-processed, per request | never                     | not after the first    | every request |
+| Steady-state billing   | ≈ 0                          | definition × 10–50%    | full definition |
+| A tool never called    | 0                            | definition × 10–50%    | full definition |
+| Occupies the context window | no                       | always                 | always        |
+
+The first request always pays full, and so does every request after the bytes
+change. Caching is a prefix match on exact bytes: one tool added, removed, or
+reworded invalidates everything at and after it, back to full price. That is the
+uncached column, and it is what a server whose tool surface drifts between
+requests actually pays.
+
+So the defensible claims are the two the cache does not remove:
+
+- the definitions **always occupy the context window**, cached or not — 77.6 to
+  963 tokens each, and 56 of them take 16.9% of a 200k window before the first
+  user message;
+- their **compute** cost is the only one caching removes, and only while the
+  bytes are stable.
+
+`f` has neither failure mode: it never serializes a definition into the body, so
+there is nothing to cache, nothing to invalidate, and nothing occupying the
+window between invocations.
+
+No host process on the `f` side: one binary on `PATH`, no daemon. Details in
+[Why a CLI and not MCP](#why-a-cli-and-not-mcp).
 
 ## Why a CLI and not MCP
 

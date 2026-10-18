@@ -134,7 +134,7 @@ it is on [Credentials](/credentials/).
 ## skills
 
 Skills are named pointers to local markdown files — instructions an LLM pulls
-into context on demand instead of paying for on every prompt.
+into context on demand rather than holding it in every prompt up front.
 
 ```sh
 f skills                     # show the default skill

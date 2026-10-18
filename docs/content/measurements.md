@@ -43,12 +43,12 @@ measured and the store contents, so a stale figure is traceable.
 describe, and something to answer; most published numbers conflate them. The
 columns below are deliberately separate.
 
-| Column           | what it is                                                      |
-| ---------------- | --------------------------------------------------------------- |
-| issuing the call | the command string tokenized — what the model writes            |
-| once per session | the `f` index: names, one grid, paid at every invocation of `f` |
-| per query        | the text `f search <query>` prints back                         |
-| definition       | a tool's full schema and description, sent with every request   |
+| Column           | what it is                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| issuing the call | the command string tokenized — what the model writes                                    |
+| once per session | the `f` index: names, one grid, paid at every invocation of `f`                         |
+| per query        | the text `f search <query>` prints back                                                 |
+| definition       | a tool's full schema and description, in the request body on every call (cached or not) |
 
 The measurement harness reads stdout only, and throws if output contains
 `unknown uck`. That check exists because a token count of an error message is a confident wrong
@@ -140,10 +140,10 @@ response:
 including an `outputSchema` saying the result is a string. This is the server's
 _largest_ tool — its mean is 174.2 — so the pair below is an upper bound.
 
-|                                     | `f creds get prod.db` | `read_text_file` |
-| ----------------------------------- | --------------------: | ---------------: |
-| Tokens to issue the call            |                     5 |                5 |
-| Tokens of definition, every request |                     2 |              260 |
+|                          | `f creds get prod.db` | `read_text_file` |
+| ------------------------ | --------------------: | ---------------: |
+| Tokens to issue the call |                     5 |                5 |
+| Definition in the body   |                     2 |              260 |
 
 ## MCP figures
 
@@ -193,6 +193,44 @@ Two naming traps in that leaderboard:
 measures the same cost as tool count scales — 24 tools at 11,213 tokens, 72 tools
 at 33,709, i.e. 467–468 tokens/tool at both sizes, 16.9% of a 200k window before
 the first user message.
+
+## What caching does and does not change
+
+The token figures above count what is **in the request body**. They do not count
+what the model re-processes, and the two diverge under prefix caching.
+
+**What caching removes: reprocessing.** Prompt caching is a prefix match on exact
+bytes. The tool definitions are the first block rendered (before system and
+messages), so a stable tool list is a stable prefix: it is tokenized into the
+model once, and a later request repeating those bytes skips the recompute. Anthropic
+documents this as _"reducing processing time and costs."_
+
+**What caching does not remove: presence.** The API is stateless, so the tool list
+is in the body of every request regardless; the model only knows a tool exists
+because it is in the tokens it is being fed. Caching discounts the **rate**, not
+the presence, and does not free context window:
+
+|                            | rate on a cache hit | source                                                                                 |
+| -------------------------- | ------------------: | -------------------------------------------------------------------------------------- |
+| Anthropic, cache read      |         10% of base | [prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) |
+| OpenAI, cached input       |  up to 95% off base | [prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)         |
+| OpenAI, GPT-6 cached input |  up to 90% off base | [announcement](https://openai.com/index/better-prompt-caching-for-gpt-6/)              |
+
+The discounts differ by model and era (OpenAI's original launch was 50%); quote
+the figure for the model you are actually billing against, not a single number.
+
+**When caching stops applying.** The match is on exact bytes; one tool added,
+removed, or reworded invalidates the prefix from that point on, and the request
+reverts to full price. A server whose tool surface drifts between requests is the
+uncached column on [Home](/), which is why the two are shown side by side there
+rather than one number with a footnote.
+
+**What still holds with or without caching.** The context-window occupancy
+(77.6–963 tokens per tool; 56 tools at 16.9% of 200k) is a property of the body,
+not the rate, so it is unaffected by caching. And `f` never serializes a
+definition into the body, so it has nothing to cache, nothing to invalidate, and
+nothing occupying the window between invocations — the argument does not depend
+on the discount being favorable.
 
 ## What is not measured
 
