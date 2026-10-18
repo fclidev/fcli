@@ -24,7 +24,7 @@
  */
 import { getCollection, render } from "astro:content";
 import Page from "../layouts/Page.astro";
-import { allSlugs, ROUTE_PAGES, UNLINKED_PAGES, titleFor, urlFor } from "../nav";
+import { allSlugs, allTitles, ROUTE_PAGES, UNLINKED_PAGES, titleFor, urlFor } from "../nav";
 
 export async function getStaticPaths() {
   const entries = await getCollection("pages");
@@ -69,9 +69,9 @@ export async function getStaticPaths() {
       );
   }
 
-  // The sidebar labels every entry, on every page, so the whole map is computed once
-  // here rather than re-read per page. Keyed by slug because Sidebar looks up by slug.
-  const titles = Object.fromEntries(entries.map((e) => [slugOf(e), e.data.title]));
+  // Sidebar labels: LABELS in nav.ts wins, frontmatter title is the fallback. Computed
+  // once here because the sidebar renders on every page.
+  const titles = allTitles(entries);
 
   return entries.map((entry) => {
     const slug = slugOf(entry);

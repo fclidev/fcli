@@ -16,6 +16,17 @@ import { join } from "node:path";
 /** Per-page body cap, as the previous index had. Long pages are clipped, not dropped. */
 const BODY_LIMIT = 4000;
 
+/**
+ * Routes that are not documents: emitted by the build, but not something to search for
+ * or hand to an agent as "the site". 404.html is the page you get when the answer is
+ * that nothing matched, so putting it in the index would let a search for a missing page
+ * match the page that reports it missing — and llms.txt would offer it as content.
+ * Its reported pathname is "404/" while the emitted file is dist/404.html, so it is
+ * filtered out before the read below, which would look for a nonexistent
+ * dist/404/index.html.
+ */
+const NOT_PAGES = ["404"];
+
 function decode(s: string) {
   return s
     .replace(/&amp;/g, "&")
@@ -47,6 +58,7 @@ export default function siteIndex() {
         const origin = (process.env.SITE_ORIGIN ?? "https://fcli.dev").replace(/\/$/, "");
 
         const docs = pages
+          .filter((p) => !NOT_PAGES.includes(p.pathname.replace(/\/$/, "")))
           .map((p: { pathname: string }) => {
             // pathname is a route: "ucks/", and "" for the homepage.
             const url = p.pathname === "" ? "/" : `/${p.pathname}`;

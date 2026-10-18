@@ -75,6 +75,49 @@ export const UNLINKED_PAGES: { slug: string; linkedFrom: string }[] = [
 ];
 
 /**
+ * Sidebar label per slug.
+ *
+ * Lives here, next to PAGES, rather than in whichever route needs it. Two route pages
+ * (/ucks/ and /404/) need the label map and cannot read titles from the content
+ * collection at module scope; when the first of them grew a local copy, the slugs in
+ * that copy went stale on the next page move and the sidebar rendered "docs/config"
+ * instead of "Config" — visibly, on every page. Keying off PAGES means a moved page
+ * cannot have a label that disagrees with its own location, and a missing entry is the
+ * only remaining failure mode, which ALL_TITLES surfaces by falling back to the slug.
+ */
+export const LABELS: Record<string, string> = {
+  index: "Overview",
+  install: "Install",
+  quickstart: "Quickstart",
+  ucks: "Ucks",
+  "docs/ucks": "Uck contract",
+  "docs/config": "Config",
+  "docs/skills": "Skills",
+  "docs/credentials": "Credentials",
+  "docs/extend": "Extend",
+  "docs/update": "Update",
+  "docs/recipes": "Recipes",
+  "docs/builtins": "Builtins",
+  "docs/measurements": "Measurements",
+};
+
+/**
+ * The full slug -> label map the sidebar renders on every page.
+ *
+ * Built from PAGES, not from LABELS, so a page added to the sidebar without a label
+ * still appears (labelled by its slug, which is ugly but not missing) rather than
+ * silently vanishing from navigation.
+ */
+export function allTitles(entries: { id: string; data: { title: string } }[]) {
+  const fromContent = Object.fromEntries(
+    entries.map((e) => [e.id.replace(/\.md$/, ""), e.data.title]),
+  );
+  return Object.fromEntries(
+    allSlugs.map((s) => [s, LABELS[s] ?? fromContent[s] ?? s]),
+  );
+}
+
+/**
  * Slug -> its section, for the sidebar's grouping and for the <title> of a page.
  *
  * Derived rather than authored so a page cannot be filed under one section in the

@@ -52,6 +52,9 @@ if (existsSync(join(DIST, "CNAME"))) {
 }
 
 const htmlFiles = [];
+// The error page is a real HTML file and gets the same head/asset checks as every page,
+// but it is deliberately absent from search.json and llms.txt, so it is counted apart.
+const ERROR_PAGE = "404.html";
 (function walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, e.name);
@@ -105,9 +108,12 @@ else {
       for (const key of ["url", "title", "summary", "body"])
         if (typeof r[key] !== "string" || !r[key])
           fail(`search.json entry ${r.url ?? "?"} has no ${key}`);
-    if (rows.length !== htmlFiles.length)
-      fail(`search.json has ${rows.length} entries, dist has ${htmlFiles.length} pages`);
-  } catch (e) {
+    // Every document is indexed except the error page, which must not be findable:
+    // indexing it would let a search for a missing page match the page reporting that
+    // nothing matched.
+    const indexed = htmlFiles.filter((f) => !f.endsWith(ERROR_PAGE)).length;
+    if (rows.length !== indexed)
+      fail(`search.json has ${rows.length} entries, dist has ${indexed} documents`);  } catch (e) {
     fail(`search.json is not valid JSON — ${e.message}`);
   }
 }
@@ -128,4 +134,4 @@ if (problems.length) {
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }
-console.log(`check: ok — ${htmlFiles.length} pages`);
+console.log(`check: ok — ${htmlFiles.filter((f) => !f.endsWith(ERROR_PAGE)).length} pages`);

@@ -22,7 +22,7 @@
  */
 import Page from "../layouts/Page.astro";
 import UckRegistry from "../components/UckRegistry.astro";
-import { allSlugs, urlFor } from "../nav";
+import { allTitles, urlFor } from "../nav";
 
 const TITLE = "Ucks";
 const SUMMARY =
@@ -44,22 +44,10 @@ const TOC = [
 // a route cannot read from astro:content at module scope. allSlugs gives the order; the
 // labels come from a single map so this page cannot drift silently — the worst case is
 // a sidebar label that reads as the slug.
-const LABELS: Record<string, string> = {
-  index: "Overview",
-  install: "Install",
-  quickstart: "Quickstart",
-  ucks: "Ucks",
-  "docs/ucks": "Uck contract",
-  config: "Config",
-  skills: "Skills",
-  credentials: "Credentials",
-  extend: "Extend",
-  update: "Update",
-  recipes: "Recipes",
-  builtins: "Builtins",
-  measurements: "Measurements",
-};
-const titles = Object.fromEntries(allSlugs.map((s) => [s, LABELS[s] ?? s]));
+// Sidebar labels come from LABELS in src/nav.ts, keyed by the same slugs the sidebar
+// lists. A local copy here previously went stale when pages moved under /docs/ and
+// rendered "docs/config" in the sidebar on every page that used it.
+const titles = allTitles([]);
 ---
 
 <Page

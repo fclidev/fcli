@@ -1,0 +1,72 @@
+---
+/**
+ * 404.html — GitHub Pages serves this for any URL that has no file.
+ *
+ * WHY IT EXISTS
+ *
+ * Without it, Pages serves its own grey "Page not found" document: no navigation, no
+ * route back to the site, and a CSP that blocks even the site's stylesheet. That is the
+ * experience of every stale link this site has ever produced, and it produces a lot of
+ * them — 8 URLs moved in one commit. A visitor arriving from a search result or a
+ * pasted link was stranded at a dead end with no way to discover that the page moved
+ * rather than disappeared.
+ *
+ * It cannot fix the underlying problem. Nothing here tells a visitor that /builtins/ is
+ * now /docs/builtins/ — that would require a redirect per moved path, which was
+ * considered and declined. What it does is keep the site reachable: the sidebar renders
+ * normally, so the destination is usually one click away.
+ *
+ * WHY A ROUTE AND NOT A CONTENT FILE
+ *
+ * The file must be exactly dist/404.html, at the published root. A content file's URL is
+ * derived from its slug, so src/content/pages/404.md would emit /404/ — a real page at
+ * the wrong path and still no 404 handler. A route gives the filename directly.
+ *
+ * Note what this means for the checker: 404.html is not a page in the sidebar and is not
+ * in the sitemap, so check.js counts HTML files including it while search.json has one
+ * fewer entry. See check.js's page-count assertion.
+ */
+import Page from "../layouts/Page.astro";
+import { allTitles, LABELS, PAGES, UNLINKED_PAGES, urlFor } from "../nav";
+---
+
+<Page
+  title="Not found"
+  description="That page does not exist. Several documentation pages moved under /docs/; the sidebar lists everything that is here."
+  slug=""
+  url="/404.html"
+  titles={allTitles([])}
+  toc={false}
+>
+  <h1>Not found</h1>
+
+  <p>
+    Nothing lives at that URL. Several documentation pages moved under
+    <code>/docs/</code>, so a link from before that change lands here — the content is
+    not gone, it is in the list on the left.
+  </p>
+
+  <p>
+    Everything the site publishes:
+  </p>
+
+  <!-- Derived from PAGES plus the off-sidebar pages, rather than typed out. A
+     hand-written copy would not fail anything when a page moved; it would keep pointing
+     at the URL that now 404s, which is the failure this page exists to soften. The
+     UNLINKED_PAGES entries are included because they are exactly the pages a visitor
+     here may be looking for: /ucks/ changed meaning in the same release that moved eight
+     other URLs, and it is not in the sidebar to fall back on. -->
+  <ul>
+    {[...PAGES.flatMap((s) => s.items), ...UNLINKED_PAGES.map((p) => p.slug)].map(
+      (slug) => (
+        <li>
+          <a href={urlFor(slug)}>{LABELS[slug] ?? slug}</a>
+        </li>
+      ),
+    )}
+  </ul>
+
+  <p>
+    Source: <a href="https://github.com/fclidev/fcli">github.com/fclidev/fcli</a>
+  </p>
+</Page>
