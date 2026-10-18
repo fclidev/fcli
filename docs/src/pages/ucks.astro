@@ -28,17 +28,10 @@ const TITLE = "Ucks";
 const SUMMARY =
   "Uck packages published on npm: every package tagged fcli-uck, fetched live, plus how to install one and where the contract is documented.";
 
-// Entries are { id, text, level } and Page renders level 2 only. Hand-written to match
-// the <h2>s below. Two sources of truth for the toc is a known trade-off of a route
-// page: the content pipeline derives these from the render pass. If a heading is added
-// here, add its slug to this list — check.js verifies every #toc anchor resolves to a
-// real id in the built page, so a mismatch fails the build rather than shipping a dead
-// anchor.
-const TOC = [
-  { id: "installing", text: "Installing", level: 2 },
-  { id: "writing-one", text: "Writing one", level: 2 },
-  { id: "the-default-ucks", text: "The default ucks", level: 2 },
-];
+// No toc: the page is a heading, a two-sentence framing paragraph, a link and the
+// widget. A level-2 heading list over a page with no level-2 headings would be worse
+// than none, and Page renders level 2 only.
+const TOC: { id: string; text: string; level: number }[] = [];
 
 // The sidebar needs labels for every page, including the collection-backed ones, which
 // a route cannot read from astro:content at module scope. allSlugs gives the order; the
@@ -64,38 +57,17 @@ const titles = allTitles([]);
     Uck packages published on npm. Anything carrying the <code>fcli-uck</code> keyword
     appears here and anything that stops carrying it disappears, so this reflects npm
     rather than a list anyone has to maintain. A package may bundle several ucks.
-    They obey the same <a href="/docs/ucks/">contract</a> as anything in the default
-    store, and installing one puts its commands on <code>f</code> exactly like a bundled
-    uck.
+  </p>
+
+  <p>
+    How they work, how to install one, and how to write one:
+    <a href="/docs/ucks/">Ucks</a>.
   </p>
 
   <p class="note">
-    The list below is fetched from npm when this page loads, so it is current without a
-    site rebuild. It needs JavaScript; the install commands on this page work either way.
+    Fetched from npm when this page loads, so it is current without a site rebuild. It
+    needs JavaScript.
   </p>
 
   <UckRegistry />
-
-  <h2 id="installing">Installing</h2>
-  <pre><code>f uck add &lt;package-name&gt;</code></pre>
-  <p>
-    <code>f uck add</code> installs the package into the uck store and its commands are
-    available immediately. To refresh everything later, <code>f uck up</code>.
-  </p>
-
-  <h2 id="writing-one">Writing one</h2>
-  <p>
-    A uck that ships on npm is an ordinary package that exports <code>register(ctx)</code>
-    and carries the <code>fcli-uck</code> keyword — that keyword is what puts it in the
-    list above. The contract is short:
-    <a href="/docs/ucks/">Ucks — the contract</a>.
-  </p>
-
-  <h2 id="the-default-ucks">The default ucks</h2>
-  <p>
-    <code>@fcli.dev/ucks</code> ships the commands most people want (<code>creds</code>,
-    <code>config</code>, <code>skills</code>, <code>pi-models</code>, …) and is installed on
-    first run. It is one package tagged <code>fcli-uck</code>, so it appears in the list
-    above like any other.
-  </p>
 </Page>

@@ -192,5 +192,30 @@ uck under a bucket named after itself.
 **As a repo** — put uck directories in a git repo (`v/index.js`,
 `w/index.js`, …) and add the repo URL to `f.config.json`. `f` clones it into
 `~/.f/ucks/<bucket>/` and loads every uck directory inside it, at any depth.
-See [Config](/docs/config/) for source forms and [Extend](/docs/extend/) for publishing
-ucks as npm packages.
+
+**As a published package** — add the package name to `ucks` and `f` fetches it
+on the next run. There is no install command: `f uck` handles authoring and
+pushing, not installing.
+
+```json
+// f.config.json
+{ "ucks": ["@fcli.dev/ucks"] }
+```
+
+`f` runs `npm pack <spec>` and unpacks the tarball into
+`~/.f/ucks/<bucket>/`, so nothing lands in a local `node_modules` and the
+project's own dependencies are untouched. A git ref pins the source
+(`@fcli.dev/ucks#0.2.0`).
+
+A published bundle holds one directory per uck under `dist/`, plus a shared
+`lib/` and a version-stamped `manifest.json`; on install `dist/` is rebased onto
+the bucket root. Single-uck packages are the same idea with one directory and a
+root `package.json` — `f` reads the version from either.
+
+Publishing is an ordinary package that exports `register(ctx)` and carries the
+`fcli-uck` keyword; that keyword is what lists it on
+[Ucks](/ucks/). See [Extend](/docs/extend/) for the packaging walk-through and
+[Config](/docs/config/) for every source form.
+
+[`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) is the default
+bundle: `f` seeds it into `f.config.json` and installs it on first run.

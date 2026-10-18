@@ -76,14 +76,22 @@ Source formats:
 
 ## 3. Install and run
 
+Add the package to `ucks` and run `f up`. `f` fetches the tarball into
+`~/.f/ucks/` — see [Adding a uck](/docs/ucks/#adding-a-uck).
+
+```json
+// f.config.json
+{ "ucks": ["@myorg/f-my-ext"] }
+```
+
 ```sh
-npm i @myorg/f-my-ext
+f up
 f myuck hello
 ```
 
-npm sources are not copied into `~/.f/ucks/` — they resolve out of
-`node_modules` every run, so there is no `f up` step. Add the package to the
-project's `package.json` and it is there for everyone who clones the project.
+The package is a copy under the store, not a dependency of your project: nothing
+is added to your `package.json` or `node_modules`, and `f up` is what refreshes
+it. `f uck` itself has no install subcommand.
 
 > A legacy `extensions` key in `f.config.json` is still read as a source list
 > when `ucks` is absent. Prefer `ucks`.
