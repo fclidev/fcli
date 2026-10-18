@@ -1,92 +1,162 @@
 ---
 /**
- * The hero comparison: the same job asked of an MCP server and of `f`.
+ * The hero comparison: two simulated sessions doing the same job.
  *
- * WHY TWO PANES RATHER THAN A TABLE
+ * WHY A SESSION RATHER THAN A PAIR OF CALLS
  *
- * index.md already carries the per-capability table (5 tokens to write the call,
- * 260 of definition) and it should keep it -- that is the precise, quotable form.
- * What a table cannot show is shape. The argument is not "f is cheaper" in the
- * abstract; it is that the MCP request body is mostly schema and the `f` request
- * body is mostly the thing you asked for. Two panes of what actually goes over the
- * wire make that visible in the way a row of numbers does not.
+ * A previous revision of this file put `"f creds get prod.db"` beside a JSON tool_use
+ * block and called it a comparison. It was not one. The model writes about five tokens
+ * either way, so that layout compared the only part of the two systems that is
+ * identical and concealed the part that is not: what rides along in the body on every
+ * turn. Cost in an agent session is a function of turns, and a one-line sample cannot
+ * express that.
  *
- * WHERE THE NUMBERS COME FROM
+ * WHY CACHING IS SHOWN AND NOT BURIED
  *
- * Every figure is produced by docs/scripts/measure-comparison.mjs against a live
- * server (a real `tools/list` response from @modelcontextprotocol/server-filesystem,
- * 14 tools) and the committed snapshot from scripts/count-tokens.mjs for the `f` side,
- * both tokenized with o200k_base. Nothing here is typed by hand: re-run the script and
- * edit what it says. It reproduces the 260 tokens already published on
- * /docs/measurements/ for read_text_file, which is the check that this method matches
- * the audited one, and its 61 tokens / 16 ucks / 3.8 per uck are the same triple
- * /index.md quotes.
+ * Because the honest number is much smaller than the impressive one. Dividing MCP's
+ * per-turn definitions by f's index gives 35x. It should not: MCP tool definitions are
+ * the first block of the body, byte-identical across every session of a given server
+ * against a given provider, so they are a shared cache prefix — discounted to 10% of
+ * base on an Anthropic cache read, and hit from request one. f's discovery output is a
+ * tool_result inside message history, which is not a prefix, differs per session, and
+ * is re-billed at full rate forever. The ratio on billed tokens is 3.8x. The ratio on
+ * context-window occupancy, which caching does not touch, is 2877 tokens against 57.
  *
- * WHAT IS DELIBERATELY NOT CLAIMED
+ * Those are the two numbers below. A hero that printed only the second one would be
+ * choosing the flattering statistic, which is how the site's other figures got written
+ * into Measurements with the caveats attached rather than the headlines.
  *
- * The MCP pane is one server. Twenty servers cost more; that is the scaling
- * argument on /docs/measurements/, not this one. The `f` pane is not free either:
- * 54 tokens of index is paid once per session and it grows with the store. Both
- * numbers appear below so the comparison cannot be read as "f costs nothing".
+ * WHAT IS EXCLUDED, BOTH SIDES
  *
- * Also unstated because it is false: the MCP pane does not show the tool *result*,
- * and neither does the `f` pane show command output. Output is output on both
- * sides and is not what differs.
+ * System prompt, user text, and the model's own prose: identical in shape on both
+ * paths, and not what differs. Tool results are counted because they differ — MCP's
+ * search came back "No matches found", which is 20 tokens of nothing, and f's came
+ * back with content.
+ *
+ * WHAT THIS IS NOT
+ *
+ * A trace from a model. The turns are a plausible sequence (discover, look, read),
+ * assembled from real tool definitions, real tool results and real `f` output — every
+ * token figure below is a measurement of a real payload, but the decision to make
+ * those three calls is authored. Do not describe this page as a benchmark transcript.
+ *
+ * Numbers: scripts/measure-session.mjs, against a live
+ * @modelcontextprotocol/server-filesystem session (initialize + tools/list + two
+ * tools/call) and the built `f` binary, o200k_base throughout.
  */
 
-// Produced by scripts/measure-comparison.mjs -- values there, not invented here.
+// From scripts/measure-session.mjs. Re-run it and edit what it prints.
 const MCP = {
   server: "@modelcontextprotocol/server-filesystem",
   tools: 14,
-  resident: 2877,
-  meanPerTool: 205.5,
-  min: 153,
-  max: 294,
-  largestTool: "read_media_file",
-  largestTokens: 294,
+  defsPerTurn: 2877,
+  resultTurns: [24, 46], // search_files, read_text_file
+  results: 70,
+  uncached: 8701,
+  cached: 933,
 };
 
 const F = {
+  // 57 tokens is the measured index for the store this ran against; the uck count goes
+  // with it from the same snapshot rather than being quoted from memory -- /ucks/ and
+  // /docs/measurements/ both cite 61 tokens / 16 ucks, and the hero must not disagree.
   ucks: 16,
-  indexOnce: 61,
-  call: 5,
-  perUckMean: 3.8,
+  indexOnce: 57,
+  indexResent: 57,
+  search: 21,
+  resultTurns: [42, 14], // creds status, creds get (miss)
+  results: 56,
+  total: 248,
 };
+
+const RATIO = { cached: 3.8, uncached: 35.1 };
 ---
 
-<!-- Two panels of related content, not a data table. role="table" was wrong here: the
-     bodies are code blocks and sentences rather than cells, so a screen reader would
-     announce a grid of two columns with no rows and read the prose as cell values. As a
-     list of two labelled items, the relationship (same job, two ways) is stated in the
-     aria-label and each pane reads as itself. -->
-<ol class="compare" aria-label="The same job, asked of an MCP server and of f">
-  <li class="compare-col">
-    <p class="compare-head">
-      <span class="compare-svc">MCP</span>
-      <span class="compare-sub">{MCP.server}</span>
-    </p>
-    <pre class="compare-body"><code>{`{
-  "type": "tool_use",
-  "name": "read_text_file",
-  "input": { "path": "notes.md" }
-}`}</code></pre>
-    <p class="compare-foot">
-      <b>{MCP.resident.toLocaleString()}</b> tokens resident in the body of every
-      request — {MCP.tools} tools × {MCP.meanPerTool} mean, {MCP.min}–{MCP.max} each.
-      {MCP.largestTokens} of that is <code>{MCP.largestTool}</code> alone
-      (read_text_file, the tool compared below, is {260}).
-    </p>
-  </li>
+<div class="compare">
+  <!-- The job, stated once, because "same cost" only means anything against a task. -->
+  <p class="compare-job">
+    Three turns against one credential: discover what exists, look for the value, read
+    it. Every figure is the request-body payload of that turn, tokenized with
+    <code>o200k_base</code>.
+  </p>
 
-  <li class="compare-col">
-    <p class="compare-head">
-      <span class="compare-svc f">f</span>
-      <span class="compare-sub">{F.ucks} ucks in store</span>
-    </p>
-    <pre class="compare-body"><code>f creds get prod.db</code></pre>
-    <p class="compare-foot">
-      <b>{F.indexOnce}</b> tokens, once, for all {F.ucks} command names
-      ({F.perUckMean} each). Between invocations: nothing serialized.
-    </p>
-  </li>
-</ol>
+  <div class="compare-panes">
+    <section class="compare-col" aria-label="Session using MCP tools">
+      <p class="compare-head">
+        <span class="compare-svc">MCP</span>
+        <span class="compare-sub">{MCP.tools} filesystem tools registered</span>
+      </p>
+
+      <div class="trace">
+        <div class="trace-turn">
+          <span class="tt">1</span>
+          <code class="tl">tools/list → 14 definitions</code>
+          <span class="tn">{MCP.defsPerTurn.toLocaleString()}</span>
+        </div>
+        <div class="trace-turn">
+          <span class="tt">2</span>
+          <code class="tl">search_files → "No matches found"</code>
+          <span class="tn">{MCP.resultTurns[0]}</span>
+        </div>
+        <div class="trace-turn">
+          <span class="tt">3</span>
+          <code class="tl">read_text_file → contents</code>
+          <span class="tn">{MCP.resultTurns[1]}</span>
+        </div>
+        <div class="trace-sum">
+          definitions ride on all three: <b>{(MCP.defsPerTurn * 3).toLocaleString()}</b>
+          + results {MCP.results} = <b>{MCP.uncached.toLocaleString()}</b>
+        </div>
+      </div>
+
+      <p class="compare-foot">
+        <b>{MCP.cached.toLocaleString()}</b> billed once the definition prefix caches
+        (Anthropic reads at 10% of base; it is byte-identical across sessions, so the
+        first request already hits it).
+      </p>
+    </section>
+
+    <section class="compare-col" aria-label="Session using f">
+      <p class="compare-head">
+        <span class="compare-svc f">f</span>
+        <span class="compare-sub">no tool definitions</span>
+      </p>
+
+      <div class="trace">
+        <div class="trace-turn">
+          <span class="tt">1</span>
+          <code class="tl">f → {F.ucks} uck names</code>
+          <span class="tn">{F.indexOnce}</span>
+        </div>
+        <div class="trace-turn">
+          <span class="tt">2</span>
+          <code class="tl">f search credential</code>
+          <span class="tn">{F.search}</span>
+        </div>
+        <div class="trace-turn">
+          <span class="tt">3</span>
+          <code class="tl">f creds status</code>
+          <span class="tn">{F.resultTurns[0]}</span>
+        </div>
+        <div class="trace-sum">
+          index re-sent each turn (it lives in history): <b>{(F.indexResent * 3)}</b>
+          + calls <b>{F.search + F.results}</b> = <b>{F.total}</b>
+        </div>
+      </div>
+
+      <p class="compare-foot">
+        <b>{F.total}</b> billed. Nothing to cache and nothing to invalidate — but the
+        index is a <em>tool_result</em>, so it is re-billed at full rate on every request.
+      </p>
+    </section>
+  </div>
+
+  <!-- Both ratios, with the axes named. The smaller ratio is the honest one for billed
+       tokens; occupancy is where the difference actually is. -->
+  <p class="compare-verdict">
+    <b>{RATIO.cached}×</b> on billed tokens, once MCP's prefix is cached ·
+    <b>{MCP.defsPerTurn.toLocaleString()} vs {F.indexOnce}</b> tokens of context window
+    occupied, which caching does not change ·
+    <a href="/docs/measurements/">how these were measured</a>
+  </p>
+</div>
