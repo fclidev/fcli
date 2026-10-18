@@ -80,7 +80,11 @@ export function sourceBucket(src: UckSource): string {
   // local / npm: the bucket is named after the source's last path segment.
   // npm: "@fcli.dev/ucks" → "ucks" (scoped package, scope is not a dir).
   // git: ".../fcli-ucks.git" → "fcli-ucks" (handled above).
-  const tail = bare.split("/").pop()?.replace(/\.git$/, "") || "source";
+  const tail =
+    bare
+      .split("/")
+      .pop()
+      ?.replace(/\.git$/, "") || "source";
   return tail;
 }
 
@@ -128,7 +132,10 @@ export function installedUcks(): StoredUck[] {
     if (!st.isDirectory()) continue;
 
     if (existsSync(join(bucketDir, ".git"))) {
-      const prov = repoProvenance(bucketDir) as { only?: string[]; except?: string[] } | null;
+      const prov = repoProvenance(bucketDir) as {
+        only?: string[];
+        except?: string[];
+      } | null;
       const filters = { only: prov?.only, except: prov?.except };
       for (const uckDir of findUckDirs(bucketDir)) {
         const name = basename(uckDir);
@@ -138,10 +145,24 @@ export function installedUcks(): StoredUck[] {
       continue;
     }
 
+    // Both bucket kinds honour only/except. `f up` writes filters into a
+    // clone's provenance, and installNpmSource now does the same for npm
+    // sources; before that, an `except` on @fcli.dev/ucks was accepted, never
+    // recorded, and silently ignored — which is how `f ls`/`f w` survived in the
+    // store after being deleted upstream (0.2.0's tarball still carried them).
+    const prov = repoProvenance(bucketDir) as {
+      only?: string[];
+      except?: string[];
+    } | null;
+    const filters = { only: prov?.only, except: prov?.except };
     for (const name of readdirSync(bucketDir).sort()) {
       const full = join(bucketDir, name);
       try {
-        if (statSync(full).isDirectory() && existsSync(join(full, "index.js"))) {
+        if (
+          statSync(full).isDirectory() &&
+          existsSync(join(full, "index.js"))
+        ) {
+          if (!nameAllowed(name, filters)) continue;
           out.push({ name, dir: full, bucket, order: order++ });
         }
       } catch {
@@ -203,7 +224,10 @@ export function resolvedUcks(): Record<string, StoredUck> {
 }
 
 /** Extract subset filters from a source (only/except). undefined = no filter. */
-export function subsetFilters(src: UckSource): { only?: string[]; except?: string[] } {
+export function subsetFilters(src: UckSource): {
+  only?: string[];
+  except?: string[];
+} {
   if (typeof src === "string") return {};
   const f: { only?: string[]; except?: string[] } = {};
   if (Array.isArray(src.only)) f.only = src.only;
@@ -212,7 +236,10 @@ export function subsetFilters(src: UckSource): { only?: string[]; except?: strin
 }
 
 /** Does a uck name pass the source's filters? (only wins if both present) */
-export function nameAllowed(name: string, f: { only?: string[]; except?: string[] }): boolean {
+export function nameAllowed(
+  name: string,
+  f: { only?: string[]; except?: string[] },
+): boolean {
   if (f.only && f.only.length > 0) return f.only.includes(name);
   if (f.except && f.except.length > 0) return !f.except.includes(name);
   return true;
@@ -254,7 +281,10 @@ function realpathOr(path: string): string {
 }
 
 function isInside(parent: string, child: string): boolean {
-  return child === parent || child.startsWith(parent.endsWith("/") ? parent : parent + "/");
+  return (
+    child === parent ||
+    child.startsWith(parent.endsWith("/") ? parent : parent + "/")
+  );
 }
 
 /**
@@ -280,7 +310,10 @@ function sourceHitsStore(specifier: string): string | null {
   return isInside(store, abs) ? abs : null;
 }
 
-export async function installSource(src: UckSource, force = false): Promise<boolean> {
+export async function installSource(
+  src: UckSource,
+  force = false,
+): Promise<boolean> {
   const { specifier } = normalizeSource(src);
   const kind = sourceKind(specifier);
   const filters = subsetFilters(src);
@@ -304,7 +337,9 @@ export async function installSource(src: UckSource, force = false): Promise<bool
       return installNpmSource(specifier, force, filters, bucket);
     } catch (e) {
       const msg = e instanceof Error ? e.message.split("\n")[0] : String(e);
-      console.error(`f: failed to install ${specifier} (${msg.split("\n")[0]})`);
+      console.error(
+        `f: failed to install ${specifier} (${msg.split("\n")[0]})`,
+      );
       return false;
     }
   }
@@ -354,10 +389,12 @@ function installGitSource(
   force: boolean,
   filters: { only?: string[]; except?: string[] },
   bucket: string,
-): boolean {  const url = gitUrl(specifier);
+): boolean {
+  const url = gitUrl(specifier);
   // Split #ref into a branch: git's own parser does not understand our suffix.
   const hash = specifier.indexOf("#");
-  const ref = hash === -1 ? undefined : specifier.slice(hash + 1).trim() || undefined;
+  const ref =
+    hash === -1 ? undefined : specifier.slice(hash + 1).trim() || undefined;
   const dir = join(storeDir(), bucket);
   const isClone = existsSync(join(dir, ".git"));
 
@@ -371,10 +408,13 @@ function installGitSource(
     // No --depth 1: history is the whole point of cloning instead of copying.
     const branch = ref ? `--branch ${quote(ref)} ` : "";
     try {
-      execSync(`git clone ${branch}--recurse-submodules ${quote(url)} ${quote(dir)}`, {
-        stdio: ["pipe", "pipe", "pipe"],
-        timeout: 120_000,
-      });
+      execSync(
+        `git clone ${branch}--recurse-submodules ${quote(url)} ${quote(dir)}`,
+        {
+          stdio: ["pipe", "pipe", "pipe"],
+          timeout: 120_000,
+        },
+      );
     } catch (e) {
       rmSync(dir, { recursive: true, force: true }); // clone may have left a partial tree
       restoreStash(dir, backup);
@@ -472,7 +512,10 @@ function ensureModuleMarkers(cloneDir: string): void {
       if (pkg.type === "module" || pkg.type === "commonjs") continue;
       if (!looksLikeEsm(join(uckDir, "index.js"))) continue;
       try {
-        writeFileSync(pkgPath, JSON.stringify({ ...pkg, type: "module" }, null, 2) + "\n");
+        writeFileSync(
+          pkgPath,
+          JSON.stringify({ ...pkg, type: "module" }, null, 2) + "\n",
+        );
       } catch {
         /* unwritable dir: the uck will fail to load and say so */
       }
@@ -480,7 +523,10 @@ function ensureModuleMarkers(cloneDir: string): void {
     }
     if (!looksLikeEsm(join(uckDir, "index.js"))) continue;
     try {
-      writeFileSync(pkgPath, JSON.stringify({ type: "module" }, null, 2) + "\n");
+      writeFileSync(
+        pkgPath,
+        JSON.stringify({ type: "module" }, null, 2) + "\n",
+      );
     } catch {
       /* unwritable dir: the uck will fail to load and say so */
     }
@@ -502,7 +548,13 @@ function looksLikeEsm(indexPath: string): boolean {
   }
   for (const line of src.split("\n", 60).values()) {
     const t = line.trim();
-    if (!t || t.startsWith("//") || t.startsWith("/*") || t.startsWith("*") || t.startsWith("#!"))
+    if (
+      !t ||
+      t.startsWith("//") ||
+      t.startsWith("/*") ||
+      t.startsWith("*") ||
+      t.startsWith("#!")
+    )
       continue;
     // First real statement decides: dynamic `import()` is legal in CommonJS, so
     // only static import/export syntax means ESM here.
@@ -515,7 +567,12 @@ function looksLikeEsm(indexPath: string): boolean {
 function remoteDefaultRef(dir: string): string {
   const tryGit = (cmd: string): string => {
     try {
-      return execSync(`git ${cmd}`, { cwd: dir, stdio: ["pipe", "pipe", "pipe"] }).toString().trim();
+      return execSync(`git ${cmd}`, {
+        cwd: dir,
+        stdio: ["pipe", "pipe", "pipe"],
+      })
+        .toString()
+        .trim();
     } catch {
       return "";
     }
@@ -561,7 +618,10 @@ function writeManifest(
     ...(filters.except ? { except: filters.except } : {}),
   };
   try {
-    writeFileSync(join(dir, ".f-source.json"), JSON.stringify(manifest, null, 2) + "\n");
+    writeFileSync(
+      join(dir, ".f-source.json"),
+      JSON.stringify(manifest, null, 2) + "\n",
+    );
   } catch {
     /* metadata only: a read-only clone still works */
   }
@@ -629,7 +689,8 @@ function stashExisting(dir: string): string[] {
       const parent = join(dir, "..");
       const stem = basename(dir) + ".pre-clone-";
       for (const e of readdirSync(parent)) {
-        if (e.startsWith(stem) && !stashes.includes(join(parent, e))) stashes.push(join(parent, e));
+        if (e.startsWith(stem) && !stashes.includes(join(parent, e)))
+          stashes.push(join(parent, e));
       }
     } catch {
       /* cannot list the store root: the stash just made is still tracked */
@@ -655,10 +716,11 @@ function restoreStash(dir: string, stashes: string[]): void {
   try {
     if (!existsSync(dir)) renameSync(stashes[0], dir);
   } catch {
-    console.error(`f: could not restore ${basename(stashes[0])} — left at ${stashes[0]}`);
+    console.error(
+      `f: could not restore ${basename(stashes[0])} — left at ${stashes[0]}`,
+    );
   }
 }
-
 
 /** The clone works; the copy it replaced is now just a stale second checkout. */
 function discardStashes(stashes: string[]): void {
@@ -701,13 +763,19 @@ function quote(s: string): string {
  */
 function firstLine(e: unknown): string {
   const msg =
-    e instanceof Error ? ((e as { stderr?: unknown }).stderr?.toString?.() || e.message) : String(e);
+    e instanceof Error
+      ? (e as { stderr?: unknown }).stderr?.toString?.() || e.message
+      : String(e);
   const lines = (msg ?? "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
   if (lines.length === 0) return String(e);
-  const err = lines.find((l) => /^(fatal|error|warning|remote:)/i.test(l) || /already exists|not a git|denied|invalid/i.test(l));
+  const err = lines.find(
+    (l) =>
+      /^(fatal|error|warning|remote:)/i.test(l) ||
+      /already exists|not a git|denied|invalid/i.test(l),
+  );
   return err ?? lines[lines.length - 1];
 }
 
@@ -718,7 +786,11 @@ function firstLine(e: unknown): string {
  * - lone .js/.mjs file → a single uck named after the file.
  * Returns true if it made progress.
  */
-async function installLocal(specifier: string, force: boolean, bucket: string): Promise<boolean> {
+async function installLocal(
+  specifier: string,
+  force: boolean,
+  bucket: string,
+): Promise<boolean> {
   const abs = resolveLocalSpecifier(specifier);
   if (!existsSync(abs)) {
     console.error(`f: local uck not found: ${abs}`);
@@ -739,7 +811,9 @@ async function installLocal(specifier: string, force: boolean, bucket: string): 
 
   // Directory: is it a repo of ucks (subdirs with index.js) or a single uck?
   const subUcks = readdirSync(abs).filter(
-    (e) => statSync(join(abs, e)).isDirectory() && existsSync(join(abs, e, "index.js"))
+    (e) =>
+      statSync(join(abs, e)).isDirectory() &&
+      existsSync(join(abs, e, "index.js")),
   );
   if (subUcks.length > 0) {
     // Local repo: install each subdir as a uck under <bucket>/.
@@ -764,7 +838,12 @@ async function installLocal(specifier: string, force: boolean, bucket: string): 
   return true;
 }
 
-function copyUckToStore(name: string, srcDir: string, force: boolean, bucket: string): void {
+function copyUckToStore(
+  name: string,
+  srcDir: string,
+  force: boolean,
+  bucket: string,
+): void {
   const bucketDir = join(storeDir(), bucket);
   const dest = join(bucketDir, name);
   if (existsSync(dest) && !force) return;
@@ -786,7 +865,9 @@ function installUckDeps(uckDir: string): void {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(`f: uck deps install failed in ${basename(uckDir)} (${msg.split("\n")[0]})`);
+    console.error(
+      `f: uck deps install failed in ${basename(uckDir)} (${msg.split("\n")[0]})`,
+    );
   }
 }
 
@@ -838,7 +919,8 @@ function installNpmSource(
 ): boolean {
   const hash = specifier.indexOf("#");
   const base = hash === -1 ? specifier : specifier.slice(0, hash);
-  const pinned = hash === -1 ? undefined : specifier.slice(hash + 1).trim() || undefined;
+  const pinned =
+    hash === -1 ? undefined : specifier.slice(hash + 1).trim() || undefined;
   const spec = pinned ? `${base}@${pinned}` : base;
 
   const dir = join(storeDir(), bucket);
@@ -868,10 +950,11 @@ function installNpmSource(
     // pack produces the .tgz. We extract it ourselves below so the bucket
     // holds the tarball's CONTENTS (npm's "package/" prefix stripped), which
     // is what installedUcks() walks.
-    execSync(
-      `npm pack --pack-destination ${quote(dir)} ${quote(spec)}`,
-      { cwd: dir, stdio: ["pipe", "pipe", "pipe"], timeout: 180_000 },
-    );
+    execSync(`npm pack --pack-destination ${quote(dir)} ${quote(spec)}`, {
+      cwd: dir,
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 180_000,
+    });
     const tgz = readdirSync(dir).find((f) => f.endsWith(".tgz"));
     if (!tgz) throw new Error("npm pack produced no tarball");
     tarball = tgz;
@@ -886,7 +969,10 @@ function installNpmSource(
     rmSync(dir, { recursive: true, force: true });
     if (prevManifest) {
       mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, ".f-source.json"), JSON.stringify(prevManifest, null, 2) + "\n");
+      writeFileSync(
+        join(dir, ".f-source.json"),
+        JSON.stringify(prevManifest, null, 2) + "\n",
+      );
     }
     throw new Error(`npm pack failed: ${firstLine(e)}`);
   }
@@ -919,10 +1005,14 @@ function installNpmSource(
   // package.json (single-uck npm sources).
   let version: string | undefined;
   try {
-    version = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")).version;
+    version = JSON.parse(
+      readFileSync(join(dir, "manifest.json"), "utf8"),
+    ).version;
   } catch {
     try {
-      version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+      version = JSON.parse(
+        readFileSync(join(dir, "package.json"), "utf8"),
+      ).version;
     } catch {
       /* neither present: fine, the bucket still loads */
     }
@@ -941,10 +1031,17 @@ function installNpmSource(
     ...(filters.only ? { only: filters.only } : {}),
     ...(filters.except ? { except: filters.except } : {}),
   };
-  writeFileSync(join(dir, ".f-source.json"), JSON.stringify(manifest, null, 2) + "\n");
+  writeFileSync(
+    join(dir, ".f-source.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
 
   const changed = prev === "" || prev !== spec || version !== prevVersion;
-  console.error(changed ? `f: installed ${spec} (${version ?? "unknown version"}) → ${dir}` : `f: ${bucket} up to date (${version ?? spec})`);
+  console.error(
+    changed
+      ? `f: installed ${spec} (${version ?? "unknown version"}) → ${dir}`
+      : `f: ${bucket} up to date (${version ?? spec})`,
+  );
   return changed;
 }
 
@@ -955,4 +1052,3 @@ function rmdirSyncSafe(dir: string): void {
     /* not empty (unexpected) or already gone: leave it */
   }
 }
-
