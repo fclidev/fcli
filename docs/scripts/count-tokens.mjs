@@ -464,34 +464,47 @@ if (argv.includes("--snapshot")) {
           notion: { tools: 24, value: 726.3 },
         },
       },
-      // Measured here, same tokenizer, current packages. Higher than tooltax's
-      // 2026-09-29 figures for the same two servers, and Playwright's tool count
-      // moved 24 -> 25 between the README and LEADERBOARD.md in one repo. These
-      // Numbers drift; the date is part of the figure.
-      // Reproduced with tooltax's own command, not a homemade measurement, so
-      // these are directly comparable to the leaderboard above. An earlier
-      // version of this block held a per-tool sum (2,879 / 4,413) mislabeled as
-      // a server total: tokenizing each tool as its own JSON object strips the
-      // array separators and one layer of braces, which reads ~18% high.
+      // Reproduced by running tooltax's own command, then re-derived from the
+      // captured tools/list response. Both numbers are kept: they answer
+      // different questions, and only one of them is ours.
       reMeasured: {
         measuredAt: "2026-07-01",
         command:
-          "npx tooltax score npm:<package> (or cmd:... for servers needing args)",
-        filesystem: {
-          pkg: "@modelcontextprotocol/server-filesystem@1.0.0",
-          tools: 14,
-          tokens: 2439,
-          perTool: 174.2,
+          "npx tooltax score npm:<package> (cmd:'...' for servers needing args)",
+        servers: {
+          filesystem: {
+            pkg: "@modelcontextprotocol/server-filesystem@1.0.0",
+            tools: 14,
+            tooltax: { tokens: 2439, perTool: 174.2 },
+            billed: { tokens: 2439, perTool: 174.2 },
+            onWire: { tokens: 2877, perTool: 205.5 },
+          },
+          playwright: {
+            pkg: "@playwright/mcp@0.0.83",
+            tools: 25,
+            tooltax: { tokens: 3793, perTool: 151.7 },
+            billed: { tokens: 3768, perTool: 150.7 },
+            onWire: { tokens: 4411, perTool: 176.4 },
+          },
         },
-        playwright: {
-          pkg: "@playwright/mcp@0.0.83",
-          tools: 25,
-          tokens: 3793,
-          perTool: 151.7,
+        conventions: {
+          tooltax: "its own CLI, run against a live server over stdio",
+          billed:
+            "our count of the same captured tools/list, restricted to the four " +
+            "fields tooltax bills (name, description, inputSchema, outputSchema)",
+          onWire:
+            "our count of the complete tool object, including title, annotations " +
+            "and execution, which a server transmits and no host forwards to a model",
         },
+        billingRule: "BILLED_FIELDS in tooltax src/score/serialize.js",
         note:
-          "Filesystem matches the 2026-09-29 leaderboard within one added schema " +
-          "field (2,383 / 170.2 there). Playwright matches it exactly.",
+          "Filesystem reproduces tooltax exactly under the billed rule, which is " +
+          "the check that our capture and tokenizer agree with theirs. Playwright " +
+          "is 25 tokens low, a version difference rather than a method one. " +
+          "billed vs onWire is a ~18% gap: about a fifth of what a server sends " +
+          "is not what a model is charged for. An earlier version of this block " +
+          "reported 2,879 and 4,413 as server totals; those were onWire sums " +
+          "divided by tool count a second time.",
       },
       mcpTurnstile: {
         url: "https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md",
