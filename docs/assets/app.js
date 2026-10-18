@@ -1,270 +1,178 @@
-// Progressive enhancement only: the site is complete and navigable without JS.
-// 1. mobile nav toggle  2. toc scroll-spy  3. client-side search over search.json
-
-const root = document.body;
-
-// The sticky sidebar is offset below the topbar by --topbar. The bar's height comes from
-// its own content and font metrics, so a value hard-coded in the stylesheet would be
-// wrong at some viewport or zoom level and clip the first sidebar row; measuring it once
-// keeps the two in step. Nothing re-measures on resize because nothing in the bar wraps
-// at widths where the sidebar is visible (it is hidden below 56rem anyway) -- if a
-// narrower breakpoint ever lets the bar wrap, re-run this on resize.
-const topbar = root.querySelector(".topbar");
-if (topbar) root.style.setProperty("--topbar", `${topbar.offsetHeight}px`);
-
-// Without JS there is no toggle, so the nav must stay visible: hide the button
-// only once a click handler is actually attached. The sidebar is documentation-only,
-// so on every other page there is nothing to open and no button to advertise.
-const toggle = root.querySelector(".page .menu");
-if (toggle && root.classList.contains("has-sidebar")) {
-  root.classList.add("has-menu");
-  toggle.setAttribute("aria-expanded", "false");
-  toggle.addEventListener("click", () => {
-    const open = root.classList.toggle("nav-open");
-    toggle.setAttribute("aria-expanded", String(open));
-  });
-}
-
-// Copy buttons: only wired up once a handler can actually be attached, so with
-// JS off the command is still visible and selectable and the button stays hidden
-// (see body.has-copy) — the button is never the only way to get the text.
-const copyButtons = [...root.querySelectorAll("[data-copy]")];
-if (copyButtons.length) root.classList.add("has-copy");
-for (const btn of copyButtons) {
-  const target = document.querySelector(btn.dataset.copy);
-  if (!target) {
-    btn.remove();
-    continue;
-  }
-  btn.addEventListener("click", async () => {
-    const text = target.textContent.trim();
-    let ok = true;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Clipboard API needs a secure context; fall back to a throwaway selection
-      // so the copy still works over http:// on a preview server.
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      root.appendChild(ta);
-      ta.select();
-      try {
-        ok = document.execCommand("copy");
-      } catch {
-        ok = false;
-      }
-      ta.remove();
-    }
-    btn.dataset.done = ok ? "1" : "0";
-    btn.textContent = ok ? "Copied" : "Press ⌘C";
-    setTimeout(() => {
-      delete btn.dataset.done;
-      btn.textContent = "Copy";
-    }, 1600);
-  });
-}
-
-const tocLinks = [...root.querySelectorAll(".toc a")];
-if (tocLinks.length && "IntersectionObserver" in window) {
-  const targets = tocLinks
-    .map((a) => document.getElementById(a.hash.slice(1)))
-    .filter(Boolean);
-  const setActive = (id) =>
-    tocLinks.forEach((a) => a.classList.toggle("current", a.hash === `#${id}`));
-  const visible = new Set();
-  const spy = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries)
-        e.isIntersecting
-          ? visible.add(e.target.id)
-          : visible.delete(e.target.id);
-      const first = targets.find((t) => visible.has(t.id));
-      if (first) setActive(first.id);
-    },
-    { rootMargin: "0px 0px -70% 0px" },
-  );
-  targets.forEach((t) => spy.observe(t));
-}
-
-// Search: one fetch of search.json, then a naive scored match per keystroke.
-const searchBox = document.querySelector("article > h1");
-if (searchBox) {
-  const index = { pages: null };
-
-  async function loadIndex() {
-    if (index.pages) return index.pages;
-    try {
-      const res = await fetch(`${relativeBase()}search.json`);
-      index.pages = (await res.json()).map((p) => ({
-        ...p,
-        hay: `${p.title} ${p.summary} ${p.body}`.toLowerCase(),
-      }));
-    } catch {
-      index.pages = [];
-    }
-    return index.pages;
-  }
-
-  function relativeBase() {
-    // search.json is emitted at the site root (see src/integrations/site-index.ts), so
-    // the answer is a root-absolute path. Deriving it from the first sidebar link used to
-    // work because every link in there is root-absolute, but the sidebar no longer exists
-    // on the homepage, the ucks listing or the error page — so that lookup silently
-    // reached the fallback on exactly the pages where navigation is thinnest.
-    return "/";
-  }
-
-  function score(page, terms) {
-    let s = 0;
-    for (const term of terms) {
-      if (!page.hay.includes(term)) return 0;
-      if (page.title.toLowerCase().includes(term)) s += 8;
-      if (page.summary.toLowerCase().includes(term)) s += 4;
-      s += 1;
-    }
-    return s;
-  }
-
-  const mount = document.createElement("div");
-  mount.className = "search";
-  mount.innerHTML = `<input type="search" placeholder="Search the docs…" aria-label="Search the docs">
-<div id="search-results" aria-live="polite"></div>`;
-  // A page with a hero has its title up there, so its first <h1> is a section
-  // heading and search belongs above everything. Otherwise the h1 is the page
-  // title and search goes straight under it. Keyed on the hero rather than on
-  // .home so any page can grow one. Inserted after the menu button to keep the
-  // toggle the first tab stop.
-  if (root.classList.contains("has-hero")) {
-    const main = document.getElementById("main");
-    const menu = main.querySelector(".menu");
-    if (menu) menu.after(mount);
-    else main.prepend(mount);
-  } else {
-    searchBox.parentNode.insertBefore(mount, searchBox);
-  }
-
-  const input = mount.querySelector("input");
-  const results = mount.querySelector("#search-results");
-
-  input.addEventListener("input", async () => {
-    const terms = input.value.toLowerCase().split(/\s+/).filter(Boolean);
-    if (terms.length < 2) {
-      results.innerHTML = "";
-      return;
-    }
-    const pages = await loadIndex();
-    const hits = pages
-      .map((p) => ({ page: p, s: score(p, terms) }))
-      .filter((h) => h.s > 0)
-      .sort((a, b) => b.s - a.s)
-      .slice(0, 8);
-    results.innerHTML = hits.length
-      ? `<ul>${hits
-          .map((h) => {
-            const snip = snippet(h.page.body, terms[terms.length - 1]);
-            return `<li><a href="${h.page.url}"><span class="hit-title">${escapeHtml(
-              h.page.title,
-            )}</span><span class="hit-url">${escapeHtml(h.page.url)}</span>${
-              snip ? `<span class="hit-snip">${escapeHtml(snip)}…</span>` : ""
-            }</a></li>`;
-          })
-          .join("")}</ul>`
-      : `<p class="empty">No matches for “${escapeHtml(input.value)}”.</p>`;
-  });
-}
-
-function snippet(body, term) {
-  const at = body.toLowerCase().indexOf(term);
-  if (at < 0) return body.slice(0, 110);
-  const start = Math.max(0, at - 55);
-  return `${start > 0 ? "…" : ""}${body.slice(start, at + 90)}`;
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-
 /* -- hero session streams ----------------------------------------------------
- * Reveal each turn in sequence and run the counter to its measured total.
+ * Reveal a session line by line, scroll the pane so the newest line stays in view,
+ * and run the counter alongside.
  *
  * Nothing here computes a number. Every target is a data-count-to the build wrote
  * from a measured payload; the animation paces those numbers, it does not produce
- * them. If this script never runs, the turns are still visible (opacity is gated on
- * .js in style.css) and the counters are stamped with their final values by the
- * reveal below -- so the widget degrades to a static comparison, not a blank box.
+ * them. If this script never runs, every line is visible (opacity is gated on
+ * .streams-live in style.css) and the counters are stamped with their final values
+ * at build time -- so the widget degrades to a static comparison, never a blank box.
  *
- * Deliberately NOT an IntersectionObserver with a threshold. The stream sits at the
- * viewport bottom on load, so any threshold above zero is already satisfied while
- * the page is still painting, and the whole animation finishes before the reader
- * looks. Watching the top edge with a bottom margin fixes that without geometry
- * assumptions: it fires when the block enters from below, and the rootMargin keeps
- * an already-visible-on-load block from firing early.
+ * SCROLL OWNERSHIP
+ *
+ * The pane follows the newest line until the reader takes over. Any upward wheel,
+ * a touch drag, a keyboard scroll key, or the pane's scrollbar releases it permanently
+ * for that pane: nothing yanks the reader back down while they are reading. Clicking
+ * inside the pane does NOT claim it, because text selection inside 700 lines of log is
+ * the single most likely thing a reader does and stealing follow on that would be a
+ * trap; the "follow" button re-arms it.
+ *
+ * The claim is deliberately one-way and never re-armed by scrolling back to the
+ * bottom by hand. Silently resuming the follow would mean a reader loses control of
+ * the pane they are holding, and the button's label makes the state explicit instead.
+ *
+ * TIMING
+ *
+ * The budget is per session, not per line: a pane with 200 lines and one with 2,000
+ * both finish in about the same time, and the second one would otherwise crawl or the
+ * first race. Lines are revealed in chunks so the count stays honest on long logs --
+ * one timer tick per line on a 2,000-line pane would take hours.
+ *
+ * Reduced motion skips all of it and shows the final state. The information is never
+ * animation-dependent.
  */
 (function () {
   var panes = [].slice.call(document.querySelectorAll(".stream"));
-  var counters = [].slice.call(document.querySelectorAll(".compare-count"));
   if (!panes.length) return;
   document.documentElement.classList.add("streams-live");
 
-  var byKey = {};
-  counters.forEach(function (el) {
-    byKey[el.getAttribute("data-count-for")] = {
-      out: el.querySelector("b"),
-      to: Number(el.getAttribute("data-count-to")) || 0,
-      done: false,
-    };
-  });
-
-  function settle(counter) {
-    if (!counter || counter.done) return;
-    counter.done = true;
-    counter.out.textContent = counter.to.toLocaleString();
-  }
-
-  function show(stream) {
-    [].slice.call(stream.querySelectorAll(".turn")).forEach(function (t) {
-      t.classList.add("on");
+  var counters = {};
+  [].slice
+    .call(document.querySelectorAll(".compare-count"))
+    .forEach(function (el) {
+      counters[el.getAttribute("data-count-for")] = {
+        out: el.querySelector("b"),
+        to: Number(el.getAttribute("data-count-to")) || 0,
+      };
     });
-    settle(byKey[stream.getAttribute("data-stream")]);
-  }
 
   var reduce =
     window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce || !("IntersectionObserver" in window)) {
-    panes.forEach(show);
-    return;
+
+  function settle(key) {
+    var c = counters[key];
+    if (c) c.out.textContent = c.to.toLocaleString();
   }
 
-  function run(stream) {
-    var turns = [].slice.call(stream.querySelectorAll(".turn"));
-    var counter = byKey[stream.getAttribute("data-stream")];
-    var step = 300;
-    turns.forEach(function (t, i) {
-      setTimeout(function () {
-        t.classList.add("on");
-      }, step * (i + 1));
+  function showAll(stream, key) {
+    [].slice.call(stream.querySelectorAll(".ln")).forEach(function (l) {
+      l.classList.add("on");
     });
-    if (counter && !counter.done) {
-      counter.done = true;
-      var dur = Math.max(700, step * turns.length);
-      var t0 = null;
-      var tick = function (now) {
-        if (t0 === null) t0 = now;
-        var k = Math.min(1, (now - t0) / dur);
-        counter.out.textContent = Math.round(counter.to * k).toLocaleString();
-        if (k < 1) requestAnimationFrame(tick);
-      };
-      setTimeout(function () {
-        requestAnimationFrame(tick);
-      }, 100);
+    settle(key);
+    var btn = stream.parentElement && stream.parentElement.querySelector(".follow");
+    if (btn) btn.hidden = true;
+  }
+
+  /* Lines are the unit of reveal; turns stay grouped so the labels remain readable. */
+  function linesOf(stream) {
+    return [].slice.call(stream.querySelectorAll(".ln"));
+  }
+
+  function follow(stream, key) {
+    var col = stream.closest(".compare-col");
+    var btn = col && col.querySelector(".follow");
+
+    // Auto-scroll only while nobody has claimed the pane: reading position always wins
+    // over animation.
+    //
+    // Detection is by bookkeeping, not by event type. A wheel listener alone misses the
+    // native scrollbar thumb, a scrollbar-key press and a programmatic assignment, and a
+    // scroll listener alone cannot tell "the reader moved" from "we moved it" because our
+    // own write fires the same event. So: record the position after every write we make,
+    // and any scroll that lands anywhere else was caused by the reader.
+    var ours = -1;
+    function stick() {
+      stream.scrollTop = stream.scrollHeight;
+      ours = stream.scrollTop;
     }
+    function release() {
+      if (!btn || !btn.hidden) return;
+      btn.hidden = false;
+    }
+    stream.addEventListener("scroll", function () {
+      if (stream.dataset.running !== "1") return;
+      if (stream.scrollTop !== ours) release();
+    });
+    ["ArrowUp", "PageUp", "Home"].forEach(function (k) {
+      stream.addEventListener("keydown", function (e) {
+        if (e.key === k) release();
+      });
+    });
+
+    // The button's `hidden` attribute is the follow flag: hidden == following, visible
+    // == the reader holds the pane and can hand it back. It starts hidden because we
+    // start following. A first version started it visible on the theory that a reader
+    // landing mid-page has already taken over; that inverted the flag and disabled
+    // following outright -- 300 animation frames ran, every one of them declining to
+    // scroll, with the pane sitting at the top of 28,000px while 41 lines typed in.
+    if (btn) {
+      btn.hidden = true;
+      btn.addEventListener("click", function () {
+        btn.hidden = true;
+        stick();
+      });
+    }
+
+    var lines = linesOf(stream);
+    var counter = counters[key];
+    // Fixed tick; the chunk absorbs the pane's length. Two-sided bounds so neither
+    // extreme is wrong: at least ~30 ticks for anything to look like a stream, and no
+    // more than 40ms per line so a 2,000-line pane is not a slideshow. Long panes
+    // therefore run longer than short ones -- 12s for 100 lines, ~80s for 2,000 --
+    // which is honest: the big response IS long, and pacing it uniformly would either
+    // crawl on the small pane or erase the reading experience on the big one.
+    var STEP = 220;
+    var minTicks = 20;
+    var ticks = Math.max(minTicks, Math.ceil((lines.length * STEP) / STEP));
+    var chunk = Math.max(1, Math.ceil(lines.length / ticks));
+    var dur = ticks * STEP;
+    var i = 0;
+
+    if (counter) counter.done = false;
+    var t0 = null;
+
+    function frame(now) {
+      if (window.__streamDebug) window.__streamDebug.push("frame i=" + i + " btn=" + (btn ? (btn.hidden ? "hidden" : "shown") : "none"));
+      if (t0 === null) t0 = now;
+      // Reveal in lockstep with the clock, so the counter and the text agree even if a
+      // tab was backgrounded and frames were dropped.
+      var k = Math.min(1, (now - t0) / dur);
+      var target = Math.min(lines.length, Math.floor(k * lines.length));
+      while (i < target && i < lines.length) {
+        lines[i].classList.add("on");
+        i++;
+      }
+      // Follow the newest line, but only while the reader has not claimed the pane.
+      // The i > 0 guard is load-bearing: without it lines[i - 1] is undefined on the
+      // first frame, the throw kills this rAF callback, and the stream never advances.
+      if (btn && btn.hidden && i > 0) {
+        var last = lines[i - 1];
+        var r = last.getBoundingClientRect();
+        var pr = stream.getBoundingClientRect();
+        if (r.bottom > pr.bottom || r.top < pr.top) stick();
+      }
+      if (counter) {
+        counter.out.textContent = Math.round(counter.to * k).toLocaleString();
+      }
+      if (k < 1) requestAnimationFrame(frame);
+      else {
+        lines.forEach(function (l) {
+          l.classList.add("on");
+        });
+        stream.dataset.running = "0";
+        settle(key);
+      }
+    }
+
+    stream.dataset.running = "1";
+    requestAnimationFrame(frame);
+  }
+
+  if (reduce || !("IntersectionObserver" in window)) {
+    panes.forEach(function (p) {
+      showAll(p, p.getAttribute("data-stream"));
+    });
+    return;
   }
 
   var seen = new WeakSet();
@@ -273,7 +181,7 @@ function escapeHtml(text) {
       entries.forEach(function (e) {
         if (seen.has(e.target)) return;
         seen.add(e.target);
-        run(e.target);
+        follow(e.target, e.target.getAttribute("data-stream"));
         io.unobserve(e.target);
       });
     },

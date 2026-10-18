@@ -764,23 +764,31 @@ body.home article {
   border-radius: 6px;
   height: 68vh;
   max-height: 46rem;
+  /* Short sessions (f's whole stream is ~260 lines, many of them short) must not
+     collapse to a stub next to MCP's 28,000px pane; the pair should read as two
+     panes of one comparison, not a column and a scroll. */
+  min-height: 20rem;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 /* A sticky header inside a scrolling pane costs 700 lines of covered content; the
    turn label scrolls away with its turn, which is what the reader expects. */
+/* Reveal unit is the LINE, not the turn. A turn here can be 689 lines of API response;
+   fading that in as one block is a wall appearing, not a stream. Turn labels are always
+   visible so the structure stays legible while its body types in. */
 .turn {
   opacity: 1;
 }
-.streams-live .turn {
-  opacity: 0;
-  transform: translateY(3px);
-}
-.streams-live .turn.on {
+.ln {
   opacity: 1;
-  transform: none;
-  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.streams-live .ln {
+  opacity: 0;
+}
+.streams-live .ln.on {
+  opacity: 1;
+  transition: opacity 0.16s ease;
 }
 .turn-h {
   display: flex;
@@ -857,11 +865,34 @@ body.home article {
 .compare-col:first-child .compare-count b {
   color: #e8a0a0;
 }
+/* Re-arms the auto-scroll the reader turned off. Sticky to the pane's bottom edge so it
+   is reachable wherever they have scrolled; without it, taking over would be permanent
+   and the only way back would be reloading the page. */
+.follow {
+  position: sticky;
+  bottom: 0.4rem;
+  z-index: 2;
+  display: block;
+  margin: 0 auto;
+  padding: 0.25rem 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--code-ink);
+  background: #2a2f35;
+  border: 1px solid #3a4046;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.follow[hidden] {
+  display: none;
+}
+.follow.armed {
+  visibility: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
-  .streams-live .turn,
-  .streams-live .turn.on {
+  .streams-live .ln,
+  .streams-live .ln.on {
     opacity: 1;
-    transform: none;
     transition: none;
   }
 }
