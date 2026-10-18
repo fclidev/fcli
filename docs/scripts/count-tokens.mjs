@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /*
- * Count the context cost of `f` discovery and of individual uck invocations.
+ * Count the context cost of `f` discovery and of issuing uck invocations.
  *
- * Everything is read from a real store; nothing is typed by hand. If a
- * description changes upstream the numbers move and this says so. That matters:
- * the previous published figures came from invented tool definitions and
- * invented descriptions, which is why they were wrong.
+ * Discovery figures run the real binary against a real store. Invocation costs
+ * tokenize the command string, which is the whole cost of issuing it — no shell
+ * output is implied. Both are derived, nothing is typed by hand. If a
+ * description changes upstream the numbers move and this says so.
  *
  * Usage:
  *   node scripts/count-tokens.mjs                 # default store (~/.f/ucks)
@@ -154,19 +154,93 @@ const fresh = byBucket[DEFAULT_BUCKET] || [];
 // stale when the format changes. `f` with no args and `f search ...` are core
 // commands, so they run against this machine's real store.
 function runF(args, home) {
+  const env = home ? { ...process.env, HOME: home } : process.env;
+  let out;
   try {
-    return execFileSync(process.execPath, [BINARY, ...args], {
+    out = execFileSync(process.execPath, [BINARY, ...args], {
       encoding: "utf8",
-      cwd: REPO,
-      env: home ? { ...process.env, HOME: home } : process.env,
+      cwd: home || REPO,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
     });
   } catch (e) {
-    // `f search` with no hits exits 1; the text is still the thing we measure.
-    return String(e.stdout ?? "") + String(e.stderr ?? "");
+    // stdout only. Node's MODULE_TYPELESS_PACKAGE_JSON warning goes to stderr
+    // for every store uck whose index.js lacks "type":"module", and
+    // concatenating it into the measured text inflated the no-match search row
+    // from 8 tokens to 109. Errors that matter are caught by the pattern below,
+    // which runs on the combined text.
+    const text = String(e.stdout ?? "");
+    const combined = text + String(e.stderr ?? "");
+    // A search miss also exits 1, so exit code alone cannot distinguish "ran and
+    // found nothing" from "did not run". Check the output: f reports a missing
+    // uck, an unknown flag, or a crash, and any of those measured as a token
+    // count would be a confident wrong number. This happened: after `search`
+    // moved out of core, every search row reported 28 tokens, which was the
+    // length of `f: unknown uck 'search'`.
+    if (
+      /unknown uck|not found|Cannot find|ERR_|SyntaxError|is not a function/.test(
+        combined,
+      )
+    ) {
+      throw new Error(
+        `measuring \`f ${args.join(" ")}\` did not run the command:\n${combined.trim()}`,
+      );
+    }
+    return text;
   }
+  // Guard the success path too: a command that printed an error and exited 0
+  // would otherwise be counted as real output.
+  if (/^f: unknown uck/m.test(out)) {
+    throw new Error(
+      `measuring \`f ${args.join(" ")}\` hit an unknown uck:\n${out.trim()}`,
+    );
+  }
+  return out;
 }
 
-const indexOutput = runF([]);
+// Discovery output must be measured against a store that actually contains the
+// `search` uck. Depending on the operator's ~/.f/ucks for that is how the search
+// rows all reported 28 tokens once `search` left core: the binary answered
+// "f: unknown uck 'search'", and an error string is also a token count.
+// So build a throwaway HOME whose store is the real one, plus `search` from the
+// sibling fcli-ucks checkout.
+function discoveryHome() {
+  const home = mkdtempSync(path.join(os.tmpdir(), "f-count-"));
+  const store = path.join(home, ".f", "ucks");
+  fs.mkdirSync(store, { recursive: true });
+  fs.writeFileSync(
+    path.join(home, ".f", "f.config.json"),
+    JSON.stringify({ ucks: [] }),
+  );
+  // Mirror the real store so names/descriptions are production ones, not invented.
+  for (const bucket of fs.readdirSync(STORE)) {
+    fs.cpSync(path.join(STORE, bucket), path.join(store, bucket), {
+      recursive: true,
+    });
+  }
+  // `search` ships in fcli-ucks. Locate it beside this repo, or refuse to guess.
+  const searchSrc = [
+    path.resolve(REPO, "../fcli-ucks/search/index.js"),
+    path.resolve(REPO, "dist/search/index.js"),
+  ].find((p) => fs.existsSync(p));
+  if (!searchSrc) {
+    throw new Error(
+      "cannot find the `search` uck (expected ../fcli-ucks/search/index.js).\n" +
+        "  Discovery search cost cannot be measured without it — refusing to guess.",
+    );
+  }
+  const dir = path.join(store, "count-local", "search");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify({ name: "search", type: "module" }),
+  );
+  fs.copyFileSync(searchSrc, path.join(dir, "index.js"));
+  return home;
+}
+
+const DHOME = discoveryHome();
+const indexOutput = runF([], DHOME);
 const SEARCHES = [
   ["ssh"],
   ["credential"],
@@ -175,10 +249,16 @@ const SEARCHES = [
 ];
 
 const rows = {
+  // Cost of *issuing* a command: the tokens the model writes into the tool call.
+  // This is pure string tokenization, not command output — the argument to
+  // `f v` is the argument, and no shell result is involved. Command output cost
+  // is unmeasurable here because it depends on the repo and machine, so no
+  // figure below claims it.
   invocation: [
-    "f creds get prod.db",
-    "f ls src",
     "f v",
+    "f config get ucks",
+    "f creds get prod.db",
+    "f search credential",
     'f fj joblogs 3773 "--- FAIL"',
   ].map((c) => ({ label: c, ...n(c) })),
   index: {
@@ -189,7 +269,7 @@ const rows = {
   search: SEARCHES.map((a) => ({
     label: `f search ${a.join(" ")}`,
     args: a,
-    ...n(runF(["search", ...a])),
+    ...n(runF(["search", ...a], DHOME)),
   })),
   // The pre-0.4 listing (name + desc for every uck), kept so the site can state
   // the change honestly rather than only showing the new number. Reconstructed
@@ -237,6 +317,10 @@ function marginalIndexCost() {
         const nm = `u${String(i).padStart(4, "0")}`;
         const dir = path.join(home, ".f/ucks/gen", nm);
         fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(
+          path.join(dir, "package.json"),
+          JSON.stringify({ name: nm, type: "module" }),
+        );
         fs.writeFileSync(
           path.join(dir, "index.js"),
           `export function register(c){return {name:${JSON.stringify(nm)},desc:"d",run(){}}}\n`,
@@ -345,22 +429,46 @@ if (argv.includes("--snapshot")) {
       cl100k_base: r.cl100k_base,
     })),
     mcpReference: {
-      note: "Measured by others, not by this script, using o200k_base. Quoted as a range: per-tool cost spans roughly 8x across servers, so no single multiplier is honest.",
+      note:
+        "Third-party and first-party MCP measurements, all o200k_base. Per-tool " +
+        "cost spans 77.6 to 963 across servers (12x), so no single multiplier " +
+        "describes MCP. Re-measure before quoting; see `reMeasured`.",
       tooltax: {
         url: "https://github.com/duskel/tooltax",
-        runDate: "2026-09-29",
+        leaderboard:
+          "https://github.com/duskel/tooltax/blob/main/LEADERBOARD.md",
+        generatedAt: "2026-09-29T09:53:41Z",
         servers: 18,
         tools: 256,
         totalTokens: 77877,
+        shareOf200k: "38.9%",
+        note:
+          "Totals from LEADERBOARD.md. The project README reports a different " +
+          "run (20 servers, 290 tools, 73,323 tokens), so totals move between " +
+          "runs — cite the dated leaderboard, not a total.",
+        // Server names matter: tooltax scores both live and archived variants
+        // of some servers at different prices. GitHub below is the ARCHIVED
+        // server (26 tools); Playwright is microsoft's (25 tools), distinct
+        // from ExecuteAutomation's (33 tools, 89.6).
         perTool: {
-          min: 77.6,
-          max: 726.3,
-          github: 138.0,
-          playwright: 151.7,
-          filesystem: 170.2,
-          kubernetes: 222.2,
-          notion: 726.3,
+          min: { server: "Puppeteer (archived)", tools: 7, value: 77.6 },
+          max: { server: "Sequential Thinking", tools: 1, value: 963 },
+          filesystem: { tools: 14, value: 170.2 },
+          githubArchived: { tools: 26, value: 138 },
+          playwright: { server: "microsoft/playwright-mcp", tools: 25, value: 151.7 },
+          kubernetes: { tools: 23, value: 222.2 },
+          notion: { tools: 24, value: 726.3 },
         },
+      },
+      // Measured here, same tokenizer, current packages. Higher than tooltax's
+      // 2026-09-29 figures for the same two servers, and Playwright's tool count
+      // moved 24 -> 25 between the README and LEADERBOARD.md in one repo. These
+      // numbers drift; the date is part of the figure.
+      reMeasured: {
+        measuredAt: new Date().toISOString().slice(0, 10),
+        command: "npx tooltax score npm:<package>",
+        filesystem: { pkg: "@modelcontextprotocol/server-filesystem@1.0.0", tools: 14, tokens: 2879, perTool: 205.6 },
+        playwright: { pkg: "@playwright/mcp (latest)", tools: 25, tokens: 4413, perTool: 176.5 },
       },
       mcpTurnstile: {
         url: "https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md",
@@ -404,7 +512,7 @@ if (argv.includes("--json")) {
     `buckets: ${buckets.map((b) => `${b}=${byBucket[b].length}`).join("  ")}`,
   );
   console.log(`default bucket (fresh install): ${DEFAULT_BUCKET}\n`);
-  console.log("-- invocation: paid when the command runs --");
+  console.log("-- issuing a command: tokens the model writes --");
   rows.invocation.forEach((r) => p(r.label, r));
   console.log("\n-- discovery: index (names only), paid once per session --");
   p(rows.index.label, rows.index);

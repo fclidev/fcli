@@ -189,7 +189,6 @@ export default { register };
 `f` copies it into `~/.f/ucks/my-ucks/ls/` and it is available as `f ls`. Point
 ing at a single uck directory (`./my-ucks/ls`) also works; it just nests the
 uck under a bucket named after itself.
-
 **As a repo** — put uck directories in a git repo (`v/index.js`,
 `w/index.js`, …) and add the repo URL to `f.config.json`. `f` clones it into
 `~/.f/ucks/<bucket>/` and loads every uck directory inside it, at any depth.

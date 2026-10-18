@@ -23,16 +23,15 @@ f
 ```text
 f v0.3.3
 
-config     creds      ls         providers    skills       uck          v            w
+config     creds      providers    search       skills       uck          v
 
 f <uck> --help | f search <query>
 ```
 
-Names only, deliberately. A name-plus-description listing grows linearly with
-the store (measured at ~21 tokens per uck on real descriptions), so it cannot be
-the default surface for a large store. Read one description with
-`f <uck> --help`, or get a filtered set with `f search <query>` — see
-[Core builtins](#core-builtins).
+Names only. A name-plus-description listing grows with the store — measured at
+376 tokens for 16 ucks against 61 for names alone — so it is not the default
+surface. Read one description with `f <uck> --help`, or get a filtered set with
+`f search <query>` — see [Core builtins](#core-builtins).
 
 `help` and `up` are not in that list: they are special-cased in core rather
 than ucks in the store — see [Core builtins](#core-builtins).
@@ -44,26 +43,6 @@ f v          # 0.3.1
 ```
 
 Prints f's own version — the version of the `f` binary, not of the ucks.
-
-## w
-
-```sh
-f w node     # /usr/local/bin/node
-```
-
-Locate a binary on `PATH`. An alias for `which`, and it passes its arguments
-through, so `which`'s flags work.
-
-## ls
-
-```sh
-f ls some/dir
-```
-
-List files, terse, one per line. A thin wrapper over `ls -1` that passes its
-arguments through. Note that it does not default a path for you: with no
-argument the wrapper asks `ls` for `undefined` and errors, so pass `.`
-explicitly.
 
 ## config
 

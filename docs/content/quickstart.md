@@ -11,8 +11,7 @@ After [installing](/install/) `f`:
 f            # the index: every uck name, no descriptions
 f search <q> # rank ucks against a query (name, then description)
 f v          # print the version
-f ls .       # list files (terse)
-f w node     # locate a binary (alias for which)
+f config get ucks  # read f's own config
 ```
 
 `f` is designed to be driven by a program: ucks print terse output and accept
@@ -27,8 +26,6 @@ and installs it into the store. The defaults are:
 | Uck           | Description                                         |
 | ------------- | --------------------------------------------------- |
 | `f v`         | print version                                       |
-| `f w <b>`     | locate binary (alias for `which`)                   |
-| `f ls [p]`    | list files (terse)                                  |
 | `f config`    | edit `f.config.json` via JSONPath                   |
 | `f creds`     | store credentials (encrypted, daemon, TTL)          |
 | `f providers` | list credential providers registered with `f creds` |

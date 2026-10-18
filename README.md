@@ -11,7 +11,7 @@
 
 `f` is a single executable on `PATH`. An agent learns its commands by running
 `f`, not from a declared tool schema, so nothing is paid until a command is
-invoked. An MCP tool definition sits in the context of *every* request whether
+invoked. An MCP tool definition sits in the context of _every_ request whether
 the model calls it or not; `f` prints names only, and descriptions come back for
 the ucks a query actually matched.
 
@@ -27,21 +27,33 @@ f search credential          →  33 tokens, per query
 ```
 
 Discovery is two steps: `f` lists names, `f search <query>` ranks them, and
-`f <uck> --help` gives detail on one. An added uck costs about 4 tokens in the
-index — measured on identical 5-character names, flat from 1 to 32 names.
+`f <uck> --help` gives detail on one. An added uck costs 1–2 tokens — a name —
+plus its grid column, measured at 4.00 tokens per uck on identical 5-character
+names.
 
-For MCP-side scale — measured elsewhere, not here, same encoder — production
-servers average roughly **140–730 tokens per tool definition**: GitHub 138,
-Playwright 152, Kubernetes 222, Notion 726. See
-[tooltax](https://github.com/duskel/tooltax) for the 18-server sample.
-Absolute numbers depend on how verbosely a server writes its descriptions, so
-they are not reduced to one multiplier here.
+For MCP-side scale: one capability, the same task both ways.
+
+|                           | `f creds get prod.db` | MCP `read_text_file` |
+| ------------------------- | --------------------: | -------------------: |
+| Tokens to issue the call  |                     5 |                    5 |
+| Definition, every request |                     2 |                  260 |
+
+`read_text_file` is the real definition from
+`@modelcontextprotocol/server-filesystem@1.0.0`, captured from its `tools/list`
+response; 97 of its 260 tokens are prose. That server costs 2,879 tokens for 14
+tools (205.6 each) against 61 tokens for the 16-name `f` index (3.8 each).
+
+Per-tool MCP cost ranges from 77.6 (archived Puppeteer) to 963 (Sequential
+Thinking) — a 12× spread — so no single multiplier describes it. Sample and
+method: [tooltax](https://github.com/duskel/tooltax). Numbers move between
+releases; the same two servers measured here came out 20% higher than the
+2026-09-29 sample.
 
 A uck (f's word for a command) is a directory with an `index.js` that exports
 `register(ctx)`, so extending `f` is editing a file. Output is plain text: no
 colors, no banner, no completion message.
 
-*A [home for all the ucks you don't give](https://fcli.dev/ucks/).*
+_A [home for all the ucks you don't give](https://fcli.dev/ucks/)._
 
 ```bash
 npm i -g @fcli.dev/f
@@ -96,19 +108,17 @@ f <uck> [args]
 
 ### Default ucks
 
-| Uck | Description |
-|-----|-------------|
-| `f v` | print version |
-| `f w <bin>` | locate binary (alias for `which`) |
-| `f ls [path]` | list files (terse) |
-| `f config ...` | edit `f.config.json` via JSONPath |
-| `f creds ...` | store credentials (encrypted, daemon+ttl) |
-| `f uck ...` | push store ucks to a git repo |
-| `f up` | full update: re-fetch all configured uck sources |
-| `f help` | list every uck name |
-`f help` and `f up` are handled in core before the uck registry is consulted, so
-they work against an empty store. `f search <query>` is an ordinary uck in the
-default bundle.
+| Uck                                                                              | Description                                      |
+| -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `f v`                                                                            | print version                                    |
+| `f config ...`                                                                   | edit `f.config.json` via JSONPath                |
+| `f creds ...`                                                                    | store credentials (encrypted, daemon+ttl)        |
+| `f uck ...`                                                                      | push store ucks to a git repo                    |
+| `f up`                                                                           | full update: re-fetch all configured uck sources |
+| `f help`                                                                         | list every uck name                              |
+| `f help` and `f up` are handled in core before the uck registry is consulted, so |
+| they work against an empty store. `f search <query>` is an ordinary uck in the   |
+| default bundle.                                                                  |
 
 `v`, `w`, and `ls` are **default ucks** — they ship in the
 [`@fcli.dev/ucks`](https://www.npmjs.com/package/@fcli.dev/ucks) npm package
@@ -243,7 +253,10 @@ export function register(_ctx) {
     desc: "list files (terse)",
     run: (_argv, args) => {
       const target = (args._ ?? ["."])[0];
-      const out = execSync(`ls -1 ${target}`, { encoding: "utf8", stdio: ["pipe","pipe","pipe"] });
+      const out = execSync(`ls -1 ${target}`, {
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
       process.stdout.write(out);
     },
   };
@@ -273,6 +286,7 @@ my-f-ext/
 ```
 
 **package.json:**
+
 ```json
 {
   "name": "@myorg/f-my-ext",
@@ -283,6 +297,7 @@ my-f-ext/
 ```
 
 **index.js:**
+
 ```js
 export function register(ctx) {
   // ctx.fVersion  — f's version
@@ -316,6 +331,7 @@ export default { register };
 ```
 
 Source formats:
+
 - **npm**: `"@scope/name"` — must be in `node_modules`
 - **local**: `"./my-ext"` or `"/abs/path"` — dir with `package.json` or `index.js`
 - **git**: `"github:user/repo"` or `"git+https://..."` — pre-install via `npm i`
@@ -331,6 +347,7 @@ f myuck hello
 ### Extension interop
 
 Full Node.js runtime. Extensions can:
+
 - Import each other: `import { helper } from "@other/f-ext"`
 - Use `child_process`, `fs`, `http`, `net` — everything
 - Inspect other ucks via `ctx.ucks`

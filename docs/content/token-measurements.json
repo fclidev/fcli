@@ -10,13 +10,13 @@
   "fVersionMeasured": "0.3.3",
   "binary": "/home/kenny/git/fcli/dist/index.js",
   "store": "/home/kenny/.f/ucks",
-  "ucksInStore": 17,
+  "ucksInStore": 16,
   "discovery": {
     "index": {
-      "ucks": 17,
+      "ucks": 16,
       "o200k_base": 61,
       "cl100k_base": 62,
-      "averagePerUckThisStore": 3.6,
+      "averagePerUckThisStore": 3,
       "marginalPerUck": 4,
       "note": "names only, columnised grid; marginal cost is the name itself"
     },
@@ -48,31 +48,36 @@
       "ucks": 16,
       "measuredFrom": "git worktree of 86b3445, `npx tsx src/index.ts` (the real pre-change binary)",
       "reconstruction": {
-        "o200k_base": 391,
-        "cl100k_base": 390
+        "o200k_base": 376,
+        "cl100k_base": 375
       },
       "perUckLine": {
         "min": 6,
         "max": 37,
-        "mean": 20.5
+        "mean": 20.8
       }
     }
   },
   "invocation": [
+    {
+      "command": "f v",
+      "o200k_base": 2,
+      "cl100k_base": 2
+    },
+    {
+      "command": "f config get ucks",
+      "o200k_base": 5,
+      "cl100k_base": 5
+    },
     {
       "command": "f creds get prod.db",
       "o200k_base": 5,
       "cl100k_base": 5
     },
     {
-      "command": "f ls src",
+      "command": "f search credential",
       "o200k_base": 3,
       "cl100k_base": 3
-    },
-    {
-      "command": "f v",
-      "o200k_base": 2,
-      "cl100k_base": 2
     },
     {
       "command": "f fj joblogs 3773 \"--- FAIL\"",
@@ -83,7 +88,7 @@
   "_encoders": "o200k_base and cl100k_base agree on invocation strings and short queries; they diverge by 1-2 tokens per line on descriptions dense with slashes or hyphens. See `disagree` below rather than assuming agreement.",
   "disagree": [
     {
-      "label": "f (index), 17 ucks (this store)",
+      "label": "f (index), 16 ucks (this store)",
       "o200k_base": 61,
       "cl100k_base": 62
     },
@@ -103,14 +108,14 @@
       "cl100k_base": 9
     },
     {
-      "label": "f help with descriptions, 17 ucks (pre-0.4 shape)",
-      "o200k_base": 391,
-      "cl100k_base": 390
+      "label": "f help with descriptions, 16 ucks (pre-0.4 shape)",
+      "o200k_base": 376,
+      "cl100k_base": 375
     },
     {
       "label": "index cost per uck (grid only, average over this store)",
-      "o200k_base": 61,
-      "cl100k_base": 62
+      "o200k_base": 48,
+      "cl100k_base": 49
     },
     {
       "label": "kensand-fcli-ucks/vaultwarden",
@@ -139,21 +144,64 @@
     }
   ],
   "mcpReference": {
-    "note": "Measured by others, not by this script, using o200k_base. Quoted as a range: per-tool cost spans roughly 8x across servers, so no single multiplier is honest.",
+    "note": "Third-party and first-party MCP measurements, all o200k_base. Per-tool cost spans 77.6 to 963 across servers (12x), so no single multiplier describes MCP. Re-measure before quoting; see `reMeasured`.",
     "tooltax": {
       "url": "https://github.com/duskel/tooltax",
-      "runDate": "2026-09-29",
+      "leaderboard": "https://github.com/duskel/tooltax/blob/main/LEADERBOARD.md",
+      "generatedAt": "2026-09-29T09:53:41Z",
       "servers": 18,
       "tools": 256,
       "totalTokens": 77877,
+      "shareOf200k": "38.9%",
+      "note": "Totals from LEADERBOARD.md. The project README reports a different run (20 servers, 290 tools, 73,323 tokens), so totals move between runs — cite the dated leaderboard, not a total.",
       "perTool": {
-        "min": 77.6,
-        "max": 726.3,
-        "github": 138,
-        "playwright": 151.7,
-        "filesystem": 170.2,
-        "kubernetes": 222.2,
-        "notion": 726.3
+        "min": {
+          "server": "Puppeteer (archived)",
+          "tools": 7,
+          "value": 77.6
+        },
+        "max": {
+          "server": "Sequential Thinking",
+          "tools": 1,
+          "value": 963
+        },
+        "filesystem": {
+          "tools": 14,
+          "value": 170.2
+        },
+        "githubArchived": {
+          "tools": 26,
+          "value": 138
+        },
+        "playwright": {
+          "server": "microsoft/playwright-mcp",
+          "tools": 25,
+          "value": 151.7
+        },
+        "kubernetes": {
+          "tools": 23,
+          "value": 222.2
+        },
+        "notion": {
+          "tools": 24,
+          "value": 726.3
+        }
+      }
+    },
+    "reMeasured": {
+      "measuredAt": "2026-10-18",
+      "command": "npx tooltax score npm:<package>",
+      "filesystem": {
+        "pkg": "@modelcontextprotocol/server-filesystem@1.0.0",
+        "tools": 14,
+        "tokens": 2879,
+        "perTool": 205.6
+      },
+      "playwright": {
+        "pkg": "@playwright/mcp (latest)",
+        "tools": 25,
+        "tokens": 4413,
+        "perTool": 176.5
       }
     },
     "mcpTurnstile": {
