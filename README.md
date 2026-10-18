@@ -31,23 +31,17 @@ Discovery is two steps: `f` lists names, `f search <query>` ranks them, and
 plus its grid column, measured at 4.00 tokens per uck on identical 5-character
 names.
 
-For MCP-side scale: one capability, the same task both ways.
+For MCP-side scale, one capability measured both ways. Reading a file by path:
 
 |                           | `f creds get prod.db` | MCP `read_text_file` |
 | ------------------------- | --------------------: | -------------------: |
 | Tokens to issue the call  |                     5 |                    5 |
 | Definition, every request |                     2 |                  260 |
 
-`read_text_file` is the real definition from
-`@modelcontextprotocol/server-filesystem@1.0.0`, captured from its `tools/list`
-response; 97 of its 260 tokens are prose, and it is that server's largest tool
-rather than a typical one. The whole server costs 2,439 tokens across 14 tools, a
-mean of 174.2, against 61 tokens for the 16-name `f` index.
-
-Per capability that is 174.2 versus 3.8 — 46× to 108× depending on whether `f`'s
-side is the whole index or one name. The two are not identical costs: an MCP
-definition is the full interface and arrives on every request, while the index
-gives names and `f <uck> --help` costs extra, on demand.
+`read_text_file` is that server's largest tool — 97 of its 260 tokens are prose —
+and it is quoted in full, with the harness and error bars, in
+[docs/content/measurements.md](docs/content/measurements.md). The server's mean is
+174.2 tokens per tool against 3.8 for `f`'s index.
 
 Per-tool MCP cost ranges from 77.6 (archived Puppeteer) to 963 (Sequential
 Thinking) — a 12× spread — so no single multiplier describes it. Sample and

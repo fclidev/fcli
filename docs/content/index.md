@@ -1,7 +1,7 @@
 ---
 page: home
 title: Overview
-summary: f is a command line interface for LLM agents. Commands are directories with an index.js, discovered by running f rather than declared in a tool schema. Lists what ships, how the store works, and how to extend it.
+summary: f is a command line interface for LLM agents. Commands are directories with an index.js, discovered by running f rather than declared in a tool schema. Lists what ships, what discovery costs in tokens, and how to extend it.
 ---
 
 !!!hero
@@ -59,116 +59,22 @@ name index rather than a description per command.
 f creds get prod.db
 ```
 
-Token counts come from `docs/scripts/count-tokens.mjs`, which runs the `f`
-binary against a real uck store. Counts use `js-tiktoken` under `o200k_base`,
-cross-checked against `cl100k_base`; the ranks agree on command strings and
-short queries and differ by 1–2 tokens per line on descriptions dense with
-slashes or paths.
+5 tokens to write that call. 2 tokens describe it. Here is what an MCP tool for
+the same job costs:
 
-| Cost                           | `o200k_base` | `cl100k_base` | What it covers   |
-| ------------------------------ | ------------ | ------------- | ---------------- |
-| `f v`                          | 2            | 2             | issuing the call |
-| `f config get ucks`            | 5            | 5             | issuing the call |
-| `f creds get prod.db`          | 5            | 5             | issuing the call |
-| `f search credential`          | 3            | 3             | issuing the call |
-| `f fj joblogs 3773 "--- FAIL"` | 10           | 10            | issuing the call |
-| `f` index, 16 ucks             | 61           | 62            | once per session |
-| `f search ssh` (1 hit)         | 14           | 13            | per query        |
-| `f search list files` (3 hits) | 29           | 29            | per query        |
-| `f search credential` (3 hits) | 33           | 34            | per query        |
-| `f search nothingzzz` (0 hits) | 8            | 9             | per query        |
-
-| Ucks installed | `f` index (names only) | full listing (name + desc) |
-| -------------: | ---------------------: | -------------------------: |
-|             16 |                     61 |                        376 |
-|             24 |                    116 |                          — |
-|             72 |                    308 |                          — |
-|            256 |                  1,044 |                          — |
-
-Index rows above 16 are projected at 4.00 tokens per uck, measured on identical
-5-character names. A name itself is 1–2 tokens; the rest of that 4 is the grid
-column it is padded into. The projection is conservative for the store measured
-here, where the marginal worked out at 2.44.
-
-## One capability, both ways
-
-Reading a file by path. `f creds get` and the MCP filesystem server's
-`read_text_file` both take one path and return its contents.
-
-```sh
-f creds get prod.db
-```
-
-The MCP side, byte for byte from that server's own `tools/list` response
-(`@modelcontextprotocol/server-filesystem@1.0.0`):
-
-```json
-{
-  "name": "read_text_file",
-  "title": "Read Text File",
-  "description": "Read the complete contents of a file from the file system as text. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Operates on the file as text regardless of extension. Only works within allowed directories.",
-  "inputSchema": {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string"
-      },
-      "tail": {
-        "description": "If provided, returns only the last N lines of the file",
-        "type": "number"
-      },
-      "head": {
-        "description": "If provided, returns only the first N lines of the file",
-        "type": "number"
-      }
-    },
-    "required": ["path"]
-  },
-  "annotations": {
-    "readOnlyHint": true,
-    "openWorldHint": false
-  },
-  "execution": {
-    "taskSupport": "forbidden"
-  },
-  "outputSchema": {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "properties": {
-      "content": {
-        "type": "string"
-      }
-    },
-    "required": ["content"],
-    "additionalProperties": false
-  }
-}
-```
-
-|                                     | `f creds get prod.db` | `read_text_file` |
-| ----------------------------------- | --------------------: | ---------------: |
-| Tokens to issue the call            |                     5 |                5 |
-| Tokens of definition, every request |                     2 |              260 |
+|                           | `f creds get prod.db` | `read_text_file` |
+| ------------------------- | --------------------: | ---------------: |
+| Tokens to issue the call  |                     5 |                5 |
+| Definition, every request |                     2 |              260 |
 
 Same 5 tokens to ask for the thing. Then 260 tokens describe that tool on every
-request, against 2 tokens describing this one. 97 of those 260 are the
-description sentence; the rest is JSON Schema, including an `outputSchema` that
-says the result is a string.
+request, whether or not the model uses it, against 2 tokens describing this one.
 
-`read_text_file` is this server's largest tool; its mean is 174.2 (measured
-below), so this pair is an upper bound, not a typical tool.
-
-Across the whole filesystem server: 2,439 tokens for 14 tools, a mean of 174.2.
-The `f` index costs 61 tokens for 16 ucks. Per capability that is 174.2 against
-3.8, which spans from 46× to 108× depending on whether `f`'s number is the whole
-index or a single name.
-
-That ratio is worth one caveat: the two costs are not identical. An MCP
-definition is the complete interface — types, enums, nested objects, limits —
-and arrives on every request. The index gives names; `f <uck> --help` and
-`f search` cost extra, and fire only on demand. `f` moves work from every request
-to the ones that need it.
+The `f` index — every command name, one grid — costs 61 tokens for 16 ucks, and
+is paid once per session. A tool definition is paid on every request. Per
+capability: 3.8 tokens against 174.2, a mean across the filesystem server's 14
+tools. What that number covers, and how far off it might be, is in
+[Measurements](/measurements/).
 
 ## Context cost against MCP
 
@@ -185,44 +91,13 @@ a query returns.
 | A capability never called costs     | 1–2 tokens          | its full definition, every request       |
 | Host process                        | none — one binary   | installed, configured, running           |
 
-What one MCP server costs per tool, at the top of the range rather than in the
-middle. Both columns are `o200k_base`; tooltax's own leaderboard covers 18 servers
-if you want the distribution.
+Per-tool cost in the wild ranges from 77.6 tokens to 963 — a factor of 12 across
+servers — so there is no single multiplier to quote. A single definition, quoted
+in full on the [README](https://github.com/fclidev/fcli), is the clearest way to
+see where that money goes. Adding 56 such tools to a 200k window costs 16.9% of
+it, before the first user message.
 
-| Server                                          | Tools | tokens/tool (billed) | tokens/tool (on the wire) |
-| ----------------------------------------------- | ----: | -------------------: | ------------------------: |
-| `@modelcontextprotocol/server-filesystem@1.0.0` |    14 |                174.2 |                     205.5 |
-| `@playwright/mcp@0.0.83`                        |    25 |                150.7 |                     176.4 |
-
-**Billed** keeps `name`, `description`, `inputSchema` and `outputSchema` — what
-tooltax counts, on the grounds that a server's `title`, `annotations` and
-`execution` hints never reach the model. **On the wire** tokenizes the complete
-tool object, including fields the server sends that no host forwards. The
-difference is 368 tokens over 14 tools on filesystem, so roughly a fifth of what
-a server transmits is not what a model is charged for.
-
-Both figures come from one `tools/list` response per server, captured by running
-it over stdio; billing rule from tooltax's `serialize.js`. Filesystem reproduces
-tooltax's leaderboard exactly (2,439 / 174.2); Playwright lands 25 tokens under
-it, which is a version difference, not a method difference.
-
-Across a 18-server sample the per-tool mean runs from 77.6 tokens (archived
-Puppeteer, 7 tools) to 963 (Sequential Thinking, 1 tool) — a factor of 12, and a
-spread wide enough that no single multiplier describes MCP. The two servers
-measured above sit at 150.7 and 174.2, near the middle.
-
-Reference runs, both tokenizing the output of `tools/list`:
-
-- [tooltax](https://github.com/duskel/tooltax) — leaderboard generated
-  2026-09-29: 18 servers scored live, 256 tools, 77,877 tokens, 38.9% of a 200k
-  window if all were installed. Its README reports a different run (20 servers,
-  290 tools, 73,323 tokens), so totals move between runs; per-server figures come
-  from the leaderboard file, linked below, and are dated.
-  [Full leaderboard](https://github.com/duskel/tooltax/blob/main/LEADERBOARD.md)
-- [mcp-turnstile](https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md)
-  — 24 tools at 11,213 tokens, 72 tools at 33,709 tokens; 467–468 tokens/tool at
-  both sizes, 16.9% of a 200k window before the first user message. Reported as
-  468 in the source.
+Sources, method and error bars: [Measurements](/measurements/).
 
 ## Why a CLI and not MCP
 

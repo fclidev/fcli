@@ -207,7 +207,10 @@ const NAV = [
   },
   {
     title: "Reference",
-    items: [["builtins", "Builtins"]],
+    items: [
+      ["builtins", "Builtins"],
+      ["measurements", "Measurements"],
+    ],
   },
 ];
 
