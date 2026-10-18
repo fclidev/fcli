@@ -13,9 +13,12 @@
   --sidebar: 16.5rem;
   --toc: 13.5rem;
   --main: 60rem;
+  /* Column padding, declared once: .page uses it and the home terminal inverts it to
+     break out of the column. Two literals would disagree the moment a breakpoint
+     overrides one. */
+  --page-pad: 2rem;
   --measure: 52rem;
-  --radius: 6px;
-  /* Height reserved for the sticky topbar, so sticky things below it can clear it.
+  --radius: 6px;  /* Height reserved for the sticky topbar, so sticky things below it can clear it.
      Overridden at runtime by app.js to the bar's measured height. The fallback matters:
      with JS off, or before the defer'd script runs, an un-offset sidebar still sits
      under the bar rather than jumping once measurement lands. Deliberately a hair under
@@ -88,7 +91,7 @@ body {
     [toc] var(--toc);
   justify-content: center;
   gap: 3rem;
-  padding-inline: 2rem;
+  padding-inline: var(--page-pad);
 }
 
 .sidebar {
@@ -461,6 +464,49 @@ aside {
   padding-top: 1.5rem;
 }
 
+/* ------------------------------------------------------------------ home
+ *
+ * Only the homepage has no sidebar, which is what makes it the only page where this is
+ * visible: on the 12 doc pages the area beside the prose is occupied by navigation, so
+ * it reads as a layout. Here the same reading column sits on a grey field with nothing
+ * beside it, and the white band looks like it failed to grow. Body is --bg (grey); the
+ * page is laid out in --panel (white), so the fix is to let that white cover the
+ * viewport on this one page and keep the prose where it is.
+ *
+ * Text measures are deliberately untouched. Prose stays at 60rem because a line of
+ * body copy at 1600px runs past 200 characters and stops being readable; what was wrong
+ * was the canvas, not the column. The terminal is full-bleed via a symmetric negative
+ * margin, which cannot shift it horizontally the way `width: 100vw` does when a
+ * scrollbar is present.
+ *
+ * If a band is ever wanted behind the prose sections too, the safe shape is a
+ * `width: min(100vw, 100% + 2rem)` with centered auto margins -- plain 100vw adds the
+ * scrollbar width and introduces horizontal overflow on every page that has one.
+ */
+body.home .page {
+  background: var(--panel);
+}
+body.home .hero .terminal {
+  /* Full-bleed without leaving the grid: a symmetric negative margin the exact width of
+     the column padding, so the box widens equally both ways and cannot drift off-centre
+     (which `width: 100vw` does when a scrollbar is present). Symmetric also means a
+     wrong value is merely a wrong width, never a shifted block. Tracks --page-pad so the
+     mobile breakpoint, which narrows that padding, keeps working. */
+  width: auto;
+  margin-inline: calc(var(--page-pad) * -1);
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+}
+body.home .hero {
+  max-width: none;
+}
+body.home .hero-title,
+body.home .hero-lede,
+body.home article {
+  max-width: var(--measure);
+}
+
 /* A <p>, deliberately, not an <h1>: the hero line is the marketing hook, and the
    document outline starts at the article's first heading. A second <h1> here
    would put two document titles in the outline and give every screen reader on
@@ -784,7 +830,9 @@ body.has-hero .search {
   .page,
   body:not(.has-toc) .page {
     grid-template-columns: [main] minmax(0, 1fr);
-    padding-inline: 1.25rem;
+    /* Tracks --page-pad so the home terminal's negative margin stays correct here. */
+    --page-pad: 1.25rem;
+    padding-inline: var(--page-pad);
     gap: 0;
   }
   .sidebar {
