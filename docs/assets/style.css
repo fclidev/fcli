@@ -758,11 +758,19 @@ body.home article {
   border-radius: 6px;
   min-height: 15rem;
 }
+/* Hiding turns is conditional on the script having claimed the widget
+   (.streams-live, set by app.js). Without that gate a script failure -- a blocked
+   /app.js, an error earlier in the file, an old browser -- leaves six invisible
+   turns and two counters reading zero, i.e. the page's central claim silently
+   replaced by an empty box. Default state is visible; animation is opt-in. */
 .turn {
+  opacity: 1;
+}
+.streams-live .turn {
   opacity: 0;
   transform: translateY(3px);
 }
-.turn.on {
+.streams-live .turn.on {
   opacity: 1;
   transform: none;
   transition: opacity 0.28s ease, transform 0.28s ease;
@@ -818,7 +826,8 @@ body.home article {
   color: #e8a0a0;
 }
 @media (prefers-reduced-motion: reduce) {
-  .turn {
+  .streams-live .turn,
+  .streams-live .turn.on {
     opacity: 1;
     transform: none;
     transition: none;

@@ -116,7 +116,7 @@ const yes = (b) => (b ? "yes" : "no");
       <p class="compare-head">
         <span class="compare-svc">MCP</span>
         <span class="compare-sub">{MCP.tools} tools declared</span>
-        <span class="compare-count" data-count-for="mcp" data-count-to={total(mcpTurns)}><b>0</b> tokens</span>
+        <span class="compare-count" data-count-for="mcp" data-count-to={total(mcpTurns)}><b>{total(mcpTurns).toLocaleString()}</b> tokens</span>
       </p>
       <div class="stream" data-stream="mcp">
         <div class="turn">
@@ -149,7 +149,7 @@ const yes = (b) => (b ? "yes" : "no");
       <p class="compare-head">
         <span class="compare-svc f">f</span>
         <span class="compare-sub">1 tool declared</span>
-        <span class="compare-count" data-count-for="f" data-count-to={total(fTurns)}><b>0</b> tokens</span>
+        <span class="compare-count" data-count-for="f" data-count-to={total(fTurns)}><b>{total(fTurns).toLocaleString()}</b> tokens</span>
       </p>
       <div class="stream" data-stream="f">
         <div class="turn">

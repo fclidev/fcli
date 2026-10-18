@@ -192,69 +192,94 @@ function escapeHtml(text) {
 
 
 /* -- hero session streams ----------------------------------------------------
- * Reveal each turn in sequence and run the counter to its measured cumulative
- * figure. Nothing here computes a number: every target is a data-count-to the build
- * wrote from measured payloads. The animation paces them, it does not produce them.
+ * Reveal each turn in sequence and run the counter to its measured total.
  *
- * Reveals on scroll-into-view rather than on load, because the hero is above the
- * fold and a visitor who never scrolls to the comparison should not have watched it
- * finish. Runs once. Reduced motion skips animation entirely and shows the final
- * state, so the information is never animation-dependent.
+ * Nothing here computes a number. Every target is a data-count-to the build wrote
+ * from a measured payload; the animation paces those numbers, it does not produce
+ * them. If this script never runs, the turns are still visible (opacity is gated on
+ * .js in style.css) and the counters are stamped with their final values by the
+ * reveal below -- so the widget degrades to a static comparison, not a blank box.
+ *
+ * Deliberately NOT an IntersectionObserver with a threshold. The stream sits at the
+ * viewport bottom on load, so any threshold above zero is already satisfied while
+ * the page is still painting, and the whole animation finishes before the reader
+ * looks. Watching the top edge with a bottom margin fixes that without geometry
+ * assumptions: it fires when the block enters from below, and the rootMargin keeps
+ * an already-visible-on-load block from firing early.
  */
 (function () {
-  const panes = [...document.querySelectorAll(".stream")];
+  var panes = [].slice.call(document.querySelectorAll(".stream"));
+  var counters = [].slice.call(document.querySelectorAll(".compare-count"));
   if (!panes.length) return;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.documentElement.classList.add("streams-live");
 
-  // Keyed by data-count-for, which the component sets to the same token as the
-  // stream's data-stream. An earlier version tried to infer the pairing by walking
-  // the DOM looking for a class, which cannot distinguish two sibling panes.
-  const counters = new Map();
-  for (const el of document.querySelectorAll(".compare-count")) {
-    counters.set(el.getAttribute("data-count-for"), {
+  var byKey = {};
+  counters.forEach(function (el) {
+    byKey[el.getAttribute("data-count-for")] = {
       out: el.querySelector("b"),
       to: Number(el.getAttribute("data-count-to")) || 0,
       done: false,
-    });
+    };
+  });
+
+  function settle(counter) {
+    if (!counter || counter.done) return;
+    counter.done = true;
+    counter.out.textContent = counter.to.toLocaleString();
   }
 
-  if (reduce) {
-    panes.forEach((p) => [...p.querySelectorAll(".turn")].forEach((t) => t.classList.add("on")));
-    for (const c of counters.values()) c.out.textContent = c.to.toLocaleString();
+  function show(stream) {
+    [].slice.call(stream.querySelectorAll(".turn")).forEach(function (t) {
+      t.classList.add("on");
+    });
+    settle(byKey[stream.getAttribute("data-stream")]);
+  }
+
+  var reduce =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || !("IntersectionObserver" in window)) {
+    panes.forEach(show);
     return;
   }
 
-  const run = (stream) => {
-    const turns = [...stream.querySelectorAll(".turn")];
-    const counter = counters.get(stream.getAttribute("data-stream"));
-    turns.forEach((t, i) => setTimeout(() => t.classList.add("on"), 340 * (i + 1)));
-    const last = turns.length ? 340 * turns.length : 0;
-    // Count over roughly the same window as the reveal, so the two read as one event.
+  function run(stream) {
+    var turns = [].slice.call(stream.querySelectorAll(".turn"));
+    var counter = byKey[stream.getAttribute("data-stream")];
+    var step = 300;
+    turns.forEach(function (t, i) {
+      setTimeout(function () {
+        t.classList.add("on");
+      }, step * (i + 1));
+    });
     if (counter && !counter.done) {
       counter.done = true;
-      const dur = Math.max(600, last);
-      const t0 = performance.now();
-      const step = (now) => {
-        const k = Math.min(1, (now - t0) / dur);
+      var dur = Math.max(700, step * turns.length);
+      var t0 = null;
+      var tick = function (now) {
+        if (t0 === null) t0 = now;
+        var k = Math.min(1, (now - t0) / dur);
         counter.out.textContent = Math.round(counter.to * k).toLocaleString();
-        if (k < 1) requestAnimationFrame(step);
+        if (k < 1) requestAnimationFrame(tick);
       };
-      setTimeout(() => requestAnimationFrame(step), 120);
+      setTimeout(function () {
+        requestAnimationFrame(tick);
+      }, 100);
     }
-  };
+  }
 
-  const seen = new WeakSet();
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting && !seen.has(e.target)) {
-          seen.add(e.target);
-          run(e.target);
-          io.unobserve(e.target);
-        }
-      }
+  var seen = new WeakSet();
+  var io = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (e) {
+        if (seen.has(e.target)) return;
+        seen.add(e.target);
+        run(e.target);
+        io.unobserve(e.target);
+      });
     },
-    { threshold: 0.25 },
+    { rootMargin: "0px 0px -12% 0px" },
   );
-  panes.forEach((p) => io.observe(p));
+  panes.forEach(function (p) {
+    io.observe(p);
+  });
 })();
