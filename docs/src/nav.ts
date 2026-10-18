@@ -60,13 +60,13 @@ export const ROUTE_PAGES: string[] = ["docs/index", "ucks"];
 /**
  * Pages that exist and are published but are deliberately absent from the sidebar.
  *
- * /ucks/ is one: it is the uck registry -- a live search over npm -- and the sidebar is
- * the documentation tree, so a list of what happens to be published is a different kind
- * of thing in the same list. It is reached from the topbar and the homepage instead.
+ * /ucks/ is one: it is the list of uck packages published on npm, and the sidebar is the
+ * documentation tree, so a list of what happens to be published is a different kind of
+ * thing in the same list. It is reached from the topbar and the homepage instead.
  *
- * Its LABELS entry is "Registry" while the doc page at /docs/ucks/ is "Ucks". Those two
- * are easy to conflate in the sidebar and the topbar, which is why the registry is named
- * for what it does rather than for the thing it contains.
+ * Both this and the sidebar's "Ucks" (/docs/ucks/, the contract) are called "Ucks" -- in
+ * the topbar and the sidebar respectively, on pages where at most one is present, so they
+ * do not collide the way two sidebar entries would.
  *
  * Declaring it here is not just bookkeeping. The orphan check exempts ROUTE_PAGES from
  * "every content file is reachable from the sidebar", which means nothing would notice
@@ -93,7 +93,7 @@ export const LABELS: Record<string, string> = {
   index: "Overview",
   install: "Install",
   quickstart: "Quickstart",
-  ucks: "Registry",
+  ucks: "Ucks",
   "docs/ucks": "Ucks",
   "docs/config": "Config",
   "docs/skills": "Skills",

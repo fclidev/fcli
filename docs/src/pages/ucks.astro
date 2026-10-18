@@ -26,7 +26,7 @@ import { allTitles, urlFor } from "../nav";
 
 const TITLE = "Ucks";
 const SUMMARY =
-  "The uck package registry: every npm package tagged fcli-uck, fetched live, plus how to install one and where the contract is documented.";
+  "Uck packages published on npm: every package tagged fcli-uck, fetched live, plus how to install one and where the contract is documented.";
 
 // Entries are { id, text, level } and Page renders level 2 only. Hand-written to match
 // the <h2>s below. Two sources of truth for the toc is a known trade-off of a route
@@ -61,16 +61,17 @@ const titles = allTitles([]);
   <h1 id="ucks">Ucks</h1>
 
   <p>
-    The registry of ucks published as npm packages. It is a search over npm rather than a
-    curated index: anything carrying the <code>fcli-uck</code> keyword appears here, and
-    anything that stops carrying it disappears. Ucks obey the same
-    <a href="/docs/ucks/">contract</a> as anything in the default store, and installing one
-    puts its commands on <code>f</code> exactly like a bundled uck.
+    Uck packages published on npm. Anything carrying the <code>fcli-uck</code> keyword
+    appears here and anything that stops carrying it disappears, so this reflects npm
+    rather than a list anyone has to maintain. A package may bundle several ucks.
+    They obey the same <a href="/docs/ucks/">contract</a> as anything in the default
+    store, and installing one puts its commands on <code>f</code> exactly like a bundled
+    uck.
   </p>
 
   <p class="note">
-    The registry below is fetched from npm when this page loads, so it is current without
-    a site rebuild. It needs JavaScript; the install commands on this page work either way.
+    The list below is fetched from npm when this page loads, so it is current without a
+    site rebuild. It needs JavaScript; the install commands on this page work either way.
   </p>
 
   <UckRegistry />
@@ -86,7 +87,7 @@ const titles = allTitles([]);
   <p>
     A uck that ships on npm is an ordinary package that exports <code>register(ctx)</code>
     and carries the <code>fcli-uck</code> keyword — that keyword is what puts it in the
-    registry above. The contract is short:
+    list above. The contract is short:
     <a href="/docs/ucks/">Ucks — the contract</a>.
   </p>
 
@@ -94,7 +95,7 @@ const titles = allTitles([]);
   <p>
     <code>@fcli.dev/ucks</code> ships the commands most people want (<code>creds</code>,
     <code>config</code>, <code>skills</code>, <code>pi-models</code>, …) and is installed on
-    first run. It is one package tagged <code>fcli-uck</code>, so it appears in the registry
+    first run. It is one package tagged <code>fcli-uck</code>, so it appears in the list
     above like any other.
   </p>
 </Page>

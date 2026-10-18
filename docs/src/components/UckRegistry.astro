@@ -1,6 +1,6 @@
 ---
 /**
- * The uck registry: every npm package tagged `fcli-uck`, fetched in the browser.
+ * /ucks/ list: every npm package tagged `fcli-uck`, fetched in the browser.
  *
  * WHY CLIENT-SIDE
  *
@@ -24,15 +24,34 @@
  * state rather than being empty and why a failed fetch leaves readable text behind
  * instead of a blank hole.
  *
- * WHY NO FILTER/SEARCH BOX
+ * WHY THERE IS NOW A FILTER BOX
  *
- * Twelve-ish packages at present; a search control over a list that fits on one screen
- * is UI debt. Revisit if the total gets past ~40.
+ * An earlier revision of this file argued against one: "twelve-ish packages at present;
+ * a search control over a list that fits on one screen is UI debt." That reasoning was
+ * sound against a list of one, which is what the keyword returns today, and the control
+ * is therefore inert for now. It stays because the list is the thing that grows, not the
+ * input, and because filtering by name is the only way to answer "is there already a uck
+ * for X" — the question the page exists to support. It filters the already-fetched set
+ * in memory, so it costs no extra requests and no debounce logic.
  */
 ---
 
 <div class="uck-registry" data-endpoint="https://registry.npmjs.org/-/v1/search">
-  <p data-uck-status>Loading packages from npm…</p>
+  <p data-uck-status id="uck-status">Loading packages from npm…</p>
+
+  <!-- Hidden until a list exists: a filter over "nothing loaded yet" or over a failed
+     fetch invites input that cannot do anything. -->
+  <p class="uck-filter" hidden>
+    <label for="uck-q">Filter</label>
+    <input
+      id="uck-q"
+      type="search"
+      placeholder="name or description"
+      autocomplete="off"
+      aria-describedby="uck-status"
+    />
+  </p>
+
   <ul data-uck-list hidden></ul>
 </div>
 
@@ -42,12 +61,14 @@
    * half-initialise against a different page's markup.
    *
    * Deliberately plain JS in a plain <script>: no module, no imports, no build step for
-   * twelve lines of fetch. Astro leaves it alone rather than bundling it, which also
+   * the amount of logic here. Astro leaves it alone rather than bundling it, which also
    * means it runs on every page that includes this component and nowhere else.
    */
   for (const root of document.querySelectorAll("[data-uck-registry], .uck-registry")) {
     const list = root.querySelector("[data-uck-list]");
     const status = root.querySelector("[data-uck-status]");
+    const filterRow = root.querySelector(".uck-filter");
+    const input = root.querySelector("#uck-q");
     if (!list || !status) continue;
 
     const endpoint = root.dataset.endpoint;
@@ -67,10 +88,14 @@
         : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     };
 
-    // One item per package; built with DOM calls rather than innerHTML += because
+    // One card per package. Built with DOM calls rather than innerHTML += because
     // name/description come from a third-party registry and must not be parsed as HTML.
-    const row = (pkg) => {
+    const card = (pkg) => {
       const li = document.createElement("li");
+      li.className = "uck-card";
+
+      const head = document.createElement("p");
+      head.className = "uck-card-head";
 
       const name = document.createElement("a");
       name.href = (pkg.links && pkg.links.npm) || `https://www.npmjs.com/package/${pkg.name}`;
@@ -81,7 +106,6 @@
       ver.className = "uck-ver";
       ver.textContent = pkg.version;
 
-      const head = document.createElement("p");
       head.append(name, ver);
       li.append(head);
 
@@ -92,15 +116,53 @@
         li.append(desc);
       }
 
+      const meta = document.createElement("p");
+      meta.className = "uck-meta";
+      const bits = [];
       const when = fmtDate(pkg.date);
-      if (when) {
-        const meta = document.createElement("p");
-        meta.className = "uck-meta";
-        meta.textContent = `published ${when}`;
-        li.append(meta);
+      if (when) bits.push(`published ${when}`);
+      // maintainers is the only publisher identity search returns; useful enough to
+      // show, and it distinguishes @fcli.dev packages from third-party ones at a glance.
+      const who = pkg.publisher && pkg.publisher.account;
+      if (Array.isArray(who) && who.length) bits.push(`by ${who.join(", ")}`);
+      // npm's relevance score is deliberately not shown: it is a weighted blend of
+      // popularity, maintenance and freshness that means nothing to someone choosing a
+      // uck, and it would be the loudest number on the card.
+      if (!bits.length) {
+        meta.hidden = true;
+      } else {
+        meta.textContent = bits.join(" · ");
       }
+      li.append(meta);
+
+      // For the filter: lowercased haystack of the fields a reader might type against.
+      li.dataset.hay = `${pkg.name} ${pkg.description ?? ""}`.toLowerCase();
       return li;
     };
+
+    const statusText = (total) =>
+      `${total} package${total === 1 ? "" : "s"} tagged fcli-uck.`;
+
+    const applyFilter = () => {
+      if (!input) return;
+      const q = input.value.trim().toLowerCase();
+      let shown = 0;
+      for (const li of list.children) {
+        const hit = !q || (li.dataset.hay || "").includes(q);
+        li.hidden = !hit;
+        if (hit) shown++;
+      }
+      const total = list.children.length;
+      // Empty query restores the plain count rather than "0 of 0"; no match is stated as
+      // such instead of "0 of N match", which reads like a bug.
+      status.textContent = !q
+        ? statusText(total)
+        : shown
+          ? `${shown} of ${total} package${total === 1 ? "" : "s"} match “${input.value.trim()}”.`
+          : `Nothing matches “${input.value.trim()}”.`;
+    };
+
+    if (input) input.addEventListener("input", applyFilter);
 
     fetch(url)
       .then((res) => {
@@ -120,9 +182,11 @@
         // the defaults forever. Sorting on the publish date makes the newest work appear
         // at the top, which is what a list of community packages is for.
         pkgs.sort((a, b) => new Date(b.date) - new Date(a.date));
-        list.replaceChildren(...pkgs.map(row));
+        list.replaceChildren(...pkgs.map(card));
         const total = typeof data.total === "number" ? data.total : pkgs.length;
-        status.textContent = `${total} package${total === 1 ? "" : "s"} tagged fcli-uck.`;
+        status.textContent = statusText(total);
+        // Only worth offering a filter once there is something to filter.
+        if (filterRow && total > 1) filterRow.hidden = false;
       })
       .catch(() => {
         // Readable text, not an empty region: the surrounding prose still explains how
@@ -137,38 +201,87 @@
   .uck-registry {
     margin: 1.5rem 0;
   }
+
+  .uck-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.85rem;
+  }
+  .uck-filter label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-faint);
+  }
+  .uck-filter input {
+    flex: 1;
+    max-width: 22rem;
+    font: inherit;
+    font-size: 0.92rem;
+    padding: 0.4rem 0.6rem;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .uck-filter input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+  }
+
+  /* Responsive cards rather than a fixed column list: one card per package, with enough
+     structure (name/version, description, provenance line) that they read as units. The
+     grid is minmax-based so it takes a second column when there is room for one without a
+     breakpoint that assumes a package count. */
   .uck-registry ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
     gap: 0.75rem;
   }
-  .uck-registry li {
-    padding: 0.75rem 0.9rem;
+  .uck-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 0.95rem;
     border: 1px solid var(--line);
     border-radius: 8px;
+    background: var(--panel);
   }
-  .uck-registry li > p {
+  .uck-card-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     margin: 0;
-  }
-  .uck-registry li > p + p {
-    margin-top: 0.3rem;
   }
   .uck-name {
     font-weight: 600;
+    /* Long scoped names must break rather than widen the card and blow out the grid. */
+    overflow-wrap: anywhere;
   }
   .uck-ver {
-    margin-left: 0.4rem;
-    font-size: 0.82em;
-    opacity: 0.7;
+    font-size: 0.78em;
+    color: var(--ink-faint);
   }
   .uck-desc {
+    margin: 0;
     color: var(--ink-soft);
-    font-size: 0.92rem;
+    font-size: 0.9rem;
+    /* Clamped to three lines so a package with a paragraph of description does not
+       tower over its neighbours in the same row. */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .uck-meta {
-    font-size: 0.8rem;
+    margin: auto 0 0;
+    font-size: 0.76rem;
     color: var(--ink-faint);
   }
 </style>

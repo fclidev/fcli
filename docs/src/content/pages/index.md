@@ -147,9 +147,9 @@ arbitrary GitHub repo or npm package. See [Config](/docs/config/).
 
 ## Ucks on npm
 
-- [Ucks](/ucks/) — the registry of packages tagged `fcli-uck`, resolved live against
-  npm. It sits outside the documentation tree above and outside the sidebar: it reports
-  what is published, which changes without a rebuild.
+- [Ucks](/ucks/) — packages tagged `fcli-uck`, resolved live against npm. It sits
+  outside the documentation tree above and outside the sidebar: it reports what is
+  published, which changes without a rebuild.
 
 Source: [github.com/fclidev/fcli](https://github.com/fclidev/fcli) ·
 Default ucks: [github.com/fclidev/fcli-ucks](https://github.com/fclidev/fcli-ucks)
