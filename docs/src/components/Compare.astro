@@ -1,211 +1,141 @@
 ---
 /**
- * The hero comparison: two simulated sessions doing the same job.
+ * Two animated sessions doing the same job, with a running token counter.
  *
- * WHY A SESSION RATHER THAN A PAIR OF CALLS
+ * READ THIS BEFORE TRUSTING THE ANIMATION
  *
- * A previous revision of this file put `"f creds get prod.db"` beside a JSON tool_use
- * block and called it a comparison. It was not one. The model writes about five tokens
- * either way, so that layout compared the only part of the two systems that is
- * identical and concealed the part that is not: what rides along in the body on every
- * turn. Cost in an agent session is a function of turns, and a one-line sample cannot
- * express that.
+ * The text that scrolls is RECONSTRUCTED. What a model actually emits is not
+ * reproducible on demand, so these are realistic sessions of the shape the two
+ * architectures produce — not recordings. Calling this a "live replay" would be a lie
+ * of the most expensive kind, because it would borrow the authority of a trace.
  *
- * WHY CACHING IS SHOWN AND NOT BURIED
+ * What IS measured is every token figure the counters reach: real tools/list from a
+ * live @modelcontextprotocol/server-filesystem session, real tool results, real `f`
+ * output from the built binary, tokenized with o200k_base.
+ * scripts/measure-streams.mjs regenerates them and cross-checks read_text_file at 260
+ * against the figure published in /docs/measurements/.
  *
- * Because the honest number is much smaller than the impressive one. Dividing MCP's
- * per-turn definitions by f's index gives 35x. It should not: MCP tool definitions are
- * the first block of the body, byte-identical across every session of a given server
- * against a given provider, so they are a shared cache prefix — discounted to 10% of
- * base on an Anthropic cache read, and hit from request one. f's discovery output is a
- * tool_result inside message history, which is not a prefix, differs per session, and
- * is re-billed at full rate forever. The ratio on billed tokens is 3.8x. The ratio on
- * context-window occupancy, which caching does not touch, is 2877 tokens against 57.
+ * THE FAIRNESS DECISION, STATED IN THE UI
  *
- * Those are the two numbers below. A hero that printed only the second one would be
- * choosing the flattering statistic, which is how the site's other figures got written
- * into Measurements with the caveats attached rather than the headlines.
+ * f needs a shell tool; no model runs `f` without one. So this is not "schema vs no
+ * schema" — both sides carry a tool definition. The real difference is whose
+ * capabilities are declared: MCP declares fourteen filesystem tools, f declares one
+ * generic runner and relies on knowledge it supplies through the index. The shell
+ * definition is paid by both sides and is therefore subtracted from the difference;
+ * it is 44 tokens, shown rather than hidden, because a difference that survives
+ * subtraction is the difference.
  *
- * WHAT IS EXCLUDED, BOTH SIDES
- *
- * System prompt, user text, and the model's own prose: identical in shape on both
- * paths, and not what differs. Tool results are counted because they differ — MCP's
- * search came back "No matches found", which is 20 tokens of nothing, and f's came
- * back with content.
- *
- * WHAT THIS IS NOT
- *
- * A trace from a model. The turns are a plausible sequence (discover, look, read),
- * assembled from real tool definitions, real tool results and real `f` output — every
- * token figure below is a measurement of a real payload, but the decision to make
- * those three calls is authored. Do not describe this page as a benchmark transcript.
- *
- * THE ABSOLUTE COLUMN, AND WHY BOTH ARE SHOWN
- *
- * Tool payload alone is the honest unit for "what does a capability cost", but it is a
- * terrible unit for scale: 57 tokens of index inside a 9k-token request is not the
- * impression the bare number gives. So the second figure is the whole request body as
- * the server counted it -- scripts/measure-absolute.mjs runs this job twice against a
- * real model with identical system prompt, identical shell tool and identical result
- * framing, and reads prompt_tokens off the response. That framing is the provider's
- * own and cannot be reconstructed from a local rank, which is why it is measured rather
- * than estimated.
- *
- * The absolute ratio is much smaller than the payload ratio, and that is the finding,
- * not a caveat: most of a real request is framing both sides pay. What the schema adds
- * is the 2,202-token difference between the two first turns -- everything else is what
- * any agent costs regardless of how capabilities arrive.
- *
- * Numbers: scripts/measure-session.mjs (payload, o200k_base) and
- * scripts/measure-absolute.mjs (whole body, server-counted).
+ * The animation is the point, not decoration: MCP's cost is that its definition block
+ * is present on every turn, which is invisible in a static screenshot and obvious when
+ * the counter climbs 2,877 before the model has said anything.
  */
 
-// From scripts/measure-session.mjs. Re-run it and edit what it prints.
+// From scripts/measure-streams.mjs.
 const MCP = {
-  server: "@modelcontextprotocol/server-filesystem",
   tools: 14,
-  defsPerTurn: 2877,
-  resultTurns: [24, 46], // search_files, read_text_file
-  results: 70,
-  uncached: 8701,
-  cached: 933,
-  // Whole request body, counted by the server, one turn per exchange.
-  body: [2579, 2601, 2622, 2648],
+  defs: 2877,
+  calls: [29, 26],
+  results: [46, 236],
 };
-
 const F = {
-  // 57 tokens is the measured index for the store this ran against; the uck count goes
-  // with it from the same snapshot rather than being quoted from memory -- /ucks/ and
-  // /docs/measurements/ both cite 61 tokens / 16 ucks, and the hero must not disagree.
-  ucks: 16,
-  indexOnce: 57,
-  indexResent: 57,
-  search: 21,
-  resultTurns: [42, 14], // creds status, creds get (miss)
-  results: 56,
-  total: 248,
-  body: [377, 408, 439, 463],
+  shellDef: 44, // paid by both sides
+  index: 57,
+  calls: [15, 13],
+  results: [42, 15],
 };
 
-const RATIO = { cached: 3.8, uncached: 35.1 };
-
-/* One divisor for both panes, derived from the larger series. Scaling each column to
-   its own maximum would make two bars of very different height look equal-heighted,
-   which is the specific way a chart becomes a lie. */
-const BAR_MAX = Math.max(...MCP.body, ...F.body);
-const barPx = (t) => Math.max(4, Math.round((t / BAR_MAX) * 132));
+// Per-turn cumulative totals the counters animate to. Everything both sides pay (the
+// shell definition) is included on both, so the two columns are directly comparable.
+const mcpTurns = [
+  { n: "1", what: "definitions registered", tok: MCP.defs, cum: MCP.defs },
+  { n: "2", what: "read_text_file → contents", tok: MCP.calls[0] + MCP.results[0], cum: MCP.defs * 2 + MCP.calls[0] + MCP.results[0] },
+  { n: "3", what: "directory_tree → listing", tok: MCP.calls[1] + MCP.results[1], cum: MCP.defs * 3 + MCP.calls[0] + MCP.results[0] + MCP.calls[1] + MCP.results[1] },
+];
+const fTurns = [
+  { n: "1", what: "bash def + `f` → index", tok: F.shellDef + F.index, cum: F.shellDef + F.index },
+  { n: "2", what: "f creds get prod.db", tok: F.calls[0] + F.results[0], cum: F.shellDef + F.index + F.calls[0] + F.results[0] },
+  { n: "3", what: "f creds status", tok: F.calls[1] + F.results[1], cum: F.shellDef + F.index + F.calls[0] + F.results[0] + F.calls[1] + F.results[1] },
+];
+const total = (t) => t.at(-1).cum;
+const shellNote = `${F.shellDef} tokens of bash definition are paid by both sides and counted on both`;
 ---
 
 <div class="compare">
-  <!-- The job, stated once, because "same cost" only means anything against a task. -->
   <p class="compare-job">
-    Three turns against one credential: discover what exists, look for the value, read it.
-    Each row is that turn's tool payload; the bars below are the <b>whole request body</b>
-    counted by a real model, so the ratio is read against a real window rather than
-    against nothing.
+    The same three-turn job, both ways. Counters are measured payloads; the text is a
+    realistic reconstruction, not a recording. {shellNote}.
   </p>
 
   <div class="compare-panes">
-    <section class="compare-col" aria-label="Session using MCP tools">
+    <section class="compare-col" aria-label="Simulated session using MCP tools">
       <p class="compare-head">
         <span class="compare-svc">MCP</span>
-        <span class="compare-sub">{MCP.tools} filesystem tools registered</span>
+        <span class="compare-sub">{MCP.tools} tools declared</span>
+        <span class="compare-count" data-count-for="mcp" data-count-to={total(mcpTurns)}><b>0</b> tokens</span>
       </p>
-
-      <div class="trace">
-        <div class="trace-turn">
-          <span class="tt">1</span>
-          <code class="tl">tools/list → 14 definitions</code>
-          <span class="tn">{MCP.defsPerTurn.toLocaleString()}</span>
+      <div class="stream" data-stream="mcp">
+        <div class="turn">
+          <p class="turn-h">turn 1 <span>{mcpTurns[0].cum}</span></p>
+          <pre class="ln body">system: you are an agent with these tools…
+tools: read_text_file, write_file, edit_file,
+       create_directory, list_directory, directory_tree,
+       move_file, search_files, get_file_info, …
+       <em>14 definitions, every request</em></pre>
         </div>
-        <div class="trace-turn">
-          <span class="tt">2</span>
-          <code class="tl">search_files → "No matches found"</code>
-          <span class="tn">{MCP.resultTurns[0]}</span>
+        <div class="turn">
+          <p class="turn-h">turn 2 <span>{mcpTurns[1].cum}</span></p>
+          <pre class="ln asst">{`{ "type": "tool_use", "name": "read_text_file",
+  "input": { "path": "/tmp/mcpsim/notes/creds.md" } }`}</pre>
+          <pre class="ln tool">{`{ "content": [ { "type": "text",
+  "text": "prod.db\n  host: db.internal\n  user: svc\n" } ] }`}</pre>
         </div>
-        <div class="trace-turn">
-          <span class="tt">3</span>
-          <code class="tl">read_text_file → contents</code>
-          <span class="tn">{MCP.resultTurns[1]}</span>
-        </div>
-        <div class="trace-sum">
-          definitions ride on all three: <b>{(MCP.defsPerTurn * 3).toLocaleString()}</b>
-          + results {MCP.results} = <b>{MCP.uncached.toLocaleString()}</b>
-        </div>
-        <div class="trace-body">
-          <span>whole body, turn 1 → 4</span>
-          <span class="bars">
-            {MCP.body.map((t, i) => (
-              <span class="bar" style={`--h:${barPx(t)}px`} title={`turn ${i + 1}: ${t} tokens`}>
-                <span class="bar-v">{t.toLocaleString()}</span>
-              </span>
-            ))}
-          </span>
+        <div class="turn">
+          <p class="turn-h">turn 3 <span>{mcpTurns[2].cum}</span></p>
+          <pre class="ln asst">{`{ "type": "tool_use", "name": "directory_tree",
+  "input": { "path": "/tmp/mcpsim", "excludePatterns": [] } }`}</pre>
+          <pre class="ln tool">{`{ "content": [ { "type": "text", "text": "[
+ { "name": "notes", "type": "directory",
+   "children": [ { "name": "creds.md",
+     "type": "file" } ] } ]" } ] }`}</pre>
         </div>
       </div>
-
-      <p class="compare-foot">
-        <b>{MCP.cached.toLocaleString()}</b> billed once the definition prefix caches
-        (Anthropic reads at 10% of base; it is byte-identical across sessions, so the
-        first request already hits it).
-      </p>
     </section>
 
-    <section class="compare-col" aria-label="Session using f">
+    <section class="compare-col" aria-label="Simulated session using f">
       <p class="compare-head">
         <span class="compare-svc f">f</span>
-        <span class="compare-sub">no tool definitions</span>
+        <span class="compare-sub">1 tool declared</span>
+        <span class="compare-count" data-count-for="f" data-count-to={total(fTurns)}><b>0</b> tokens</span>
       </p>
-
-      <div class="trace">
-        <div class="trace-turn">
-          <span class="tt">1</span>
-          <code class="tl">f → {F.ucks} uck names</code>
-          <span class="tn">{F.indexOnce}</span>
+      <div class="stream" data-stream="f">
+        <div class="turn">
+          <p class="turn-h">turn 1 <span>{fTurns[0].cum}</span></p>
+          <pre class="ln body">system: you are an agent with these tools…
+tools: bash
+$ f
+f v0.3.3
+config creds df fj gh ha providers search uck</pre>
         </div>
-        <div class="trace-turn">
-          <span class="tt">2</span>
-          <code class="tl">f search credential</code>
-          <span class="tn">{F.search}</span>
+        <div class="turn">
+          <p class="turn-h">turn 2 <span>{fTurns[1].cum}</span></p>
+          <pre class="ln asst">{`{ "tool": "bash",
+  "input": { "command": "f creds get prod.db" } }`}</pre>
+          <pre class="ln tool">prod.db = sk-live-9f2c… (expires in 2h 14m)</pre>
         </div>
-        <div class="trace-turn">
-          <span class="tt">3</span>
-          <code class="tl">f creds status</code>
-          <span class="tn">{F.resultTurns[0]}</span>
-        </div>
-        <div class="trace-sum">
-          index re-sent each turn (it lives in history): <b>{(F.indexResent * 3)}</b>
-          + calls <b>{F.search + F.results}</b> = <b>{F.total}</b>
-        </div>
-        <div class="trace-body">
-          <span>whole body, turn 1 → 4</span>
-          <span class="bars">
-            {F.body.map((t, i) => (
-              <span class="bar" style={`--h:${barPx(t)}px`} title={`turn ${i + 1}: ${t} tokens`}>
-                <span class="bar-v">{t}</span>
-              </span>
-            ))}
-          </span>
+        <div class="turn">
+          <p class="turn-h">turn 3 <span>{fTurns[2].cum}</span></p>
+          <pre class="ln asst">{`{ "tool": "bash",
+  "input": { "command": "f creds status" } }`}</pre>
+          <pre class="ln tool">unlocked (167m 31s left)</pre>
         </div>
       </div>
-
-      <p class="compare-foot">
-        <b>{F.total}</b> billed. Nothing to cache and nothing to invalidate — but the
-        index is a <em>tool_result</em>, so it is re-billed at full rate on every request.
-      </p>
     </section>
   </div>
 
-  <!-- Both ratios, with the axes named. The smaller ratio is the honest one for billed
-       tokens; occupancy is where the difference actually is. -->
   <p class="compare-verdict">
-    The same request, counted by the server it was sent to:
-    <b>{MCP.body[0].toLocaleString()} vs {F.body[0].toLocaleString()}</b> tokens on turn
-    one — so the schema costs <b>{(MCP.body[0] - F.body[0]).toLocaleString()} tokens</b>
-    over a framing both sides pay.
-    <b>{RATIO.cached}×</b> on billed tool tokens, and
-    <b>{MCP.defsPerTurn.toLocaleString()} vs {F.indexOnce}</b> of window occupied, which
-    caching does not change.
+    <b>{total(mcpTurns).toLocaleString()}</b> against <b>{total(fTurns)}</b> for three
+    turns. The gap is not the calls — those are {MCP.calls[0]} and {F.calls[0]} tokens —
+    it is {MCP.defs.toLocaleString()} of definitions riding on every turn. 
     <a href="/docs/measurements/">how these were measured</a>
   </p>
 </div>

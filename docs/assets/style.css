@@ -744,54 +744,87 @@ body.home article {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
-/* Absolute request body, turn by turn. The bar height is tokens/32 in BOTH panes --
-   one divisor, or the two columns would each be self-scaled and the visual comparison
-   would be a lie. MCP's first turn is ~2.6k against f's ~380, and the bars should look
-   about seven times different, because they are. */
-.trace-body {
-  margin-top: 0.45rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid #2a2f35;
-  font-size: 0.68rem;
-  color: var(--code-plain);
+/* Animated session streams. Turns reveal in sequence; the counter runs up to the
+   measured cumulative figure. Text is revealed, never generated — the numbers are the
+   measurement and the animation only paces them. */
+.stream {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  min-height: 15rem;
 }
-.bars {
-  /* Room for a 132px bar plus its label sitting above it, so no label is ever
-     clipped by a short bar -- the f series tops out near 14px and would otherwise
-     have to share 14px with its own digits. */
+.turn {
+  opacity: 0;
+  transform: translateY(3px);
+}
+.turn.on {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.turn-h {
   display: flex;
-  align-items: flex-end;
-  gap: 0.35rem;
-  height: 152px;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--code-plain);
 }
-.bar {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  height: var(--h, 4px);
-  border-radius: 3px 3px 0 0;
-  background: var(--accent-soft);
-}
-.bar-v {
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%);
-  padding-bottom: 2px;
+.turn-h span {
   font-variant-numeric: tabular-nums;
-  font-size: 0.62rem;
-  white-space: nowrap;
+}
+.ln {
+  margin: 0 0 0.2rem;
+  padding: 0.3rem 0.4rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 2px solid var(--code-bash);
+  color: var(--code-ink);
+}
+.ln.asst {
+  border-left-color: var(--code-fn);
+}
+.ln.tool {
+  border-left-color: var(--code-plain);
+  color: var(--code-plain);
+}
+.ln.body {
+  border-left-color: var(--code-str);
+}
+.ln em {
+  color: var(--code-fn);
+  font-style: normal;
+}
+/* The counter is the payload of the whole widget, so it is the loudest thing in the
+   pane and carries the pane's own colour. */
+.compare-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.compare-count b {
+  font-size: 1rem;
   color: var(--accent);
 }
-.compare-col:first-child .bar {
-  background: #3a2a2a;
-}
-.compare-col:first-child .bar-v {
+.compare-col:first-child .compare-count b {
   color: #e8a0a0;
 }
+@media (prefers-reduced-motion: reduce) {
+  .turn {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 .compare-verdict {
   margin: 0.7rem 0 0;
   font-size: 0.8rem;

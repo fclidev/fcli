@@ -189,3 +189,72 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+
+/* -- hero session streams ----------------------------------------------------
+ * Reveal each turn in sequence and run the counter to its measured cumulative
+ * figure. Nothing here computes a number: every target is a data-count-to the build
+ * wrote from measured payloads. The animation paces them, it does not produce them.
+ *
+ * Reveals on scroll-into-view rather than on load, because the hero is above the
+ * fold and a visitor who never scrolls to the comparison should not have watched it
+ * finish. Runs once. Reduced motion skips animation entirely and shows the final
+ * state, so the information is never animation-dependent.
+ */
+(function () {
+  const panes = [...document.querySelectorAll(".stream")];
+  if (!panes.length) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Keyed by data-count-for, which the component sets to the same token as the
+  // stream's data-stream. An earlier version tried to infer the pairing by walking
+  // the DOM looking for a class, which cannot distinguish two sibling panes.
+  const counters = new Map();
+  for (const el of document.querySelectorAll(".compare-count")) {
+    counters.set(el.getAttribute("data-count-for"), {
+      out: el.querySelector("b"),
+      to: Number(el.getAttribute("data-count-to")) || 0,
+      done: false,
+    });
+  }
+
+  if (reduce) {
+    panes.forEach((p) => [...p.querySelectorAll(".turn")].forEach((t) => t.classList.add("on")));
+    for (const c of counters.values()) c.out.textContent = c.to.toLocaleString();
+    return;
+  }
+
+  const run = (stream) => {
+    const turns = [...stream.querySelectorAll(".turn")];
+    const counter = counters.get(stream.getAttribute("data-stream"));
+    turns.forEach((t, i) => setTimeout(() => t.classList.add("on"), 340 * (i + 1)));
+    const last = turns.length ? 340 * turns.length : 0;
+    // Count over roughly the same window as the reveal, so the two read as one event.
+    if (counter && !counter.done) {
+      counter.done = true;
+      const dur = Math.max(600, last);
+      const t0 = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / dur);
+        counter.out.textContent = Math.round(counter.to * k).toLocaleString();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      setTimeout(() => requestAnimationFrame(step), 120);
+    }
+  };
+
+  const seen = new WeakSet();
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting && !seen.has(e.target)) {
+          seen.add(e.target);
+          run(e.target);
+          io.unobserve(e.target);
+        }
+      }
+    },
+    { threshold: 0.25 },
+  );
+  panes.forEach((p) => io.observe(p));
+})();
