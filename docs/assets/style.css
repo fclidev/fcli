@@ -85,31 +85,37 @@ body {
  * keeps that distinction from mattering. */
 .page {
   display: grid;
-  grid-template-columns:
-    [side] var(--sidebar)
-    [main] minmax(0, var(--main))
-    [toc] var(--toc);
+  /* No template here. All four shapes are declared by the body-class combinations below,
+     each listing exactly the tracks its children occupy -- a template on .page would be
+     overridden in every case but would be the thing a future reader trusts. */
   justify-content: center;
   gap: 3rem;
   padding-inline: var(--page-pad);
 }
 
-.sidebar {
-  grid-column: side;
-}
-main {
-  grid-column: main;
-}
-.page > aside {
-  grid-column: toc;
-}
+/* Children are placed implicitly, in source order, so no rule here names a line.
+   Placing them by name was safe while <body> had one fixed three-track template, but the
+   sidebar is now conditional: a template that drops the `side` track renumbers `main`
+   and `toc`, so <main> silently landed in the first track and the aside in the second,
+   leaving the right half of the viewport empty. Implicit placement cannot disagree with
+   the track count, because it follows it. Source order in .page is sidebar, main, aside
+   -- the same order the named lines described. */
 
-/* The third column exists only when the layout emitted a toc. A 13.5rem track was
+/* The toc column exists only when the layout emitted a toc. A 13.5rem track was
    previously reserved on every page, including the 7 with no level-2 headings and the
    landing page -- which squeezed the reading column from 60rem to 448px on a 1440px
    screen. */
-body:not(.has-toc) .page {
-  grid-template-columns: [side] var(--sidebar) [main] minmax(0, var(--main));
+body.has-toc .page {
+  grid-template-columns: minmax(0, var(--main)) var(--toc);
+}
+body.has-sidebar.has-toc .page {
+  grid-template-columns: var(--sidebar) minmax(0, var(--main)) var(--toc);
+}
+body.has-sidebar:not(.has-toc) .page {
+  grid-template-columns: var(--sidebar) minmax(0, var(--main));
+}
+body:not(.has-sidebar):not(.has-toc) .page {
+  grid-template-columns: minmax(0, var(--main));
 }
 body:not(.has-toc) .page > aside {
   display: none;
@@ -148,17 +154,11 @@ body:not(.has-toc) .page > aside {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-/* The sidebar is documentation-only, so the grid has two shapes: with the `side` track
-   and without it. has-sidebar is emitted by Page.astro from the slug, which keeps the
-   class and the element it describes from ever disagreeing. */
-body:not(.has-sidebar) .page {
-  grid-template-columns: [main] minmax(0, var(--main));
-}
+/* The sidebar is documentation-only. Its track is in the has-sidebar rules above, so
+   nothing is needed here beyond hiding the element when Page.astro did render it and the
+   class says otherwise -- it does not, but the rule keeps the two from drifting. */
 body:not(.has-sidebar) .page > .sidebar {
   display: none;
-}
-body:not(.has-sidebar).has-toc .page {
-  grid-template-columns: [main] minmax(0, var(--main)) [toc] var(--toc);
 }
 /* The mobile menu button opens the sidebar; with no sidebar there is nothing to open,
    and app.js adds .has-menu whenever a .menu button exists. */
@@ -813,13 +813,15 @@ body.has-hero .search {
 /* ----------------------------------------------------------------- narrow */
 
 @media (max-width: 82rem) {
-  .page,
-  body:not(.has-toc) .page {
-    grid-template-columns: [side] var(--sidebar) [main] minmax(0, var(--main));
+  /* The toc is hidden below this width, so it is no longer a track -- and since nothing
+     is placed by line number any more, dropping it from the template is all that is
+     needed to keep the remaining children in the right columns. */
+  body.has-toc .page,
+  body.has-sidebar.has-toc .page {
+    grid-template-columns: var(--sidebar) minmax(0, var(--main));
   }
-  /* No sidebar, no `side` track to give back at this width either. */
   body:not(.has-sidebar) .page {
-    grid-template-columns: [main] minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   aside {
     display: none;
@@ -828,15 +830,15 @@ body.has-hero .search {
 
 @media (max-width: 56rem) {
   .page,
-  body:not(.has-toc) .page {
-    grid-template-columns: [main] minmax(0, 1fr);
+  body.has-toc .page,
+  body.has-sidebar .page,
+  body.has-sidebar.has-toc .page,
+  body:not(.has-sidebar) .page {
+    grid-template-columns: minmax(0, 1fr);
     /* Tracks --page-pad so the home terminal's negative margin stays correct here. */
     --page-pad: 1.25rem;
     padding-inline: var(--page-pad);
     gap: 0;
-  }
-  .sidebar {
-    grid-column: main;
   }
   article,
   footer {
