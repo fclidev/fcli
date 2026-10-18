@@ -189,20 +189,21 @@
       }
     },
     "reMeasured": {
-      "measuredAt": "2026-10-18",
-      "command": "npx tooltax score npm:<package>",
+      "measuredAt": "2026-07-01",
+      "command": "npx tooltax score npm:<package> (or cmd:... for servers needing args)",
       "filesystem": {
         "pkg": "@modelcontextprotocol/server-filesystem@1.0.0",
         "tools": 14,
-        "tokens": 2879,
-        "perTool": 205.6
+        "tokens": 2439,
+        "perTool": 174.2
       },
       "playwright": {
-        "pkg": "@playwright/mcp (latest)",
+        "pkg": "@playwright/mcp@0.0.83",
         "tools": 25,
-        "tokens": 4413,
-        "perTool": 176.5
-      }
+        "tokens": 3793,
+        "perTool": 151.7
+      },
+      "note": "Filesystem matches the 2026-09-29 leaderboard within one added schema field (2,383 / 170.2 there). Playwright matches it exactly."
     },
     "mcpTurnstile": {
       "url": "https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md",

@@ -151,15 +151,24 @@ The MCP side, byte for byte from that server's own `tools/list` response
 | Tokens to issue the call            |                     5 |                5 |
 | Tokens of definition, every request |                     2 |              260 |
 
-Same 5 tokens to ask for the thing. Then 260 tokens describe that tool to the
-model on every request, against 2 tokens describing this one. 97 of the 260 are
-the description alone; the rest is JSON Schema, including an `outputSchema` that
+Same 5 tokens to ask for the thing. Then 260 tokens describe that tool on every
+request, against 2 tokens describing this one. 97 of those 260 are the
+description sentence; the rest is JSON Schema, including an `outputSchema` that
 says the result is a string.
 
-Across a whole server: 2,879 tokens for the filesystem server's 14 tools, 205.6
-each. The `f` index costs 61 tokens for 16 ucks, 3.8 each. Both are the
-always-present description of what is available, so the ratio — 53× — compares
-like with like.
+`read_text_file` is this server's largest tool. Its mean is 174.2 (table below),
+so this pair shows an upper bound, not a typical tool.
+
+Across the whole filesystem server: 2,439 tokens for 14 tools, a mean of 174.2.
+The `f` index costs 61 tokens for 16 ucks. Per capability that is 174.2 against
+3.8, which spans from 46× to 108× depending on whether `f`'s number is the whole
+index or a single name.
+
+That ratio is worth one caveat: the two costs are not identical. An MCP
+definition is the complete interface — types, enums, nested objects, limits —
+and arrives on every request. The index gives names; `f <uck> --help` and
+`f search` cost extra, and fire only on demand. `f` moves work from every request
+to the ones that need it.
 
 ## Context cost against MCP
 
@@ -176,31 +185,34 @@ a query returns.
 | A capability never called costs     | 1–2 tokens               | its full definition, every request       |
 | Host process                        | none — one binary        | installed, configured, running           |
 
-Per-tool MCP cost, `o200k_base`. Two columns where they differ: tooltax scores
-the published package, "here" re-measures the current package with the same
-command.
+Per-tool MCP cost, `o200k_base`. Where there are two columns, they are the same
+server at the same version: tooltax scores a live server over stdio, "here"
+tokenizes its captured `tools/list` response. They differ by how much JSON
+syntax the tokenizer sees, and the column says which.
 
-| Server               | Tools | tokens/tool (tooltax) | tokens/tool (here) |
-| -------------------- | ----: | --------------------: | -----------------: |
-| Fetch                |     1 |                   237 |                  — |
-| Puppeteer (archived) |     7 |                  77.6 |                  — |
-| Git                  |    12 |                  94.1 |                  — |
-| Everything           |    13 |                  90.1 |                  — |
-| Filesystem           |    14 |                 170.2 |              205.6 |
-| Memory               |     9 |                 225.3 |                  — |
-| Playwright           |    25 |                 151.7 |              176.5 |
-| GitHub (archived)    |    26 |                   138 |                  — |
-| Kubernetes           |    23 |                 222.2 |                  — |
-| MongoDB              |    31 |                 533.3 |                  — |
-| Firecrawl            |    26 |                 642.8 |                  — |
-| Notion               |    24 |                 726.3 |                  — |
-| Sequential Thinking  |     1 |                   963 |                  — |
+| Server               | Tools | tokens/tool (tooltax) | tokens/tool (here)¹ |
+| -------------------- | ----: | --------------------: | ------------------: |
+| Fetch                |     1 |                   237 |                   — |
+| Puppeteer (archived) |     7 |                  77.6 |                   — |
+| Git                  |    12 |                  94.1 |                   — |
+| Everything           |    13 |                  90.1 |                   — |
+| Filesystem           |    14 |                 170.2 |               205.6 |
+| Memory               |     9 |                 225.3 |                   — |
+| Playwright           |    25 |                 151.7 |               176.5 |
+| GitHub (archived)    |    26 |                   138 |                   — |
+| Kubernetes           |    23 |                 222.2 |                   — |
+| MongoDB              |    31 |                 533.3 |                   — |
+| Firecrawl            |    26 |                 642.8 |                   — |
+| Notion               |    24 |                 726.3 |                   — |
+| Sequential Thinking  |     1 |                   963 |                   — |
 
-"here" is `npx tooltax score npm:<pkg>` against a current install of
-`@modelcontextprotocol/server-filesystem` (2,879 tokens, 14 tools) and
-`@playwright/mcp` (4,413 tokens, 25 tools). Both re-measurements came out higher
-than the 2026-09-29 figures, and Playwright's tool count moved from 24 to 25
-between the README table and the leaderboard file in the same repository.
+¹ "here" captures the `tools/list` response and tokenizes each tool as its own
+JSON object, then averages. That strips array separators and one layer of braces,
+so it reads high: filesystem 205.5, Playwright 176.5. tooltax tokenizes the whole
+list as one value and gives 174.2 and 151.7 for the same servers at the same
+versions — it reproduces its own leaderboard exactly. Use the tooltax column; "here"
+is the per-tool count, not a server total. Tool counts match across both methods,
+which is the part that matters for this table.
 
 The per-tool figures span 77.6 to 963 tokens, a factor of 12, so no single multiplier describes
 MCP. Reference runs, both tokenizing the output of `tools/list`:
@@ -212,8 +224,9 @@ MCP. Reference runs, both tokenizing the output of `tools/list`:
   from the leaderboard file, linked below, and are dated.
   [Full leaderboard](https://github.com/duskel/tooltax/blob/main/LEADERBOARD.md)
 - [mcp-turnstile](https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md)
-  — 24 tools at 11,213 tokens, 72 tools at 33,709 tokens; 466–468 tokens/tool at
-  both sizes, 16.9% of a 200k window before the first user message.
+  — 24 tools at 11,213 tokens, 72 tools at 33,709 tokens; 467–468 tokens/tool at
+  both sizes, 16.9% of a 200k window before the first user message. Reported as
+  468 in the source.
 
 ## Why a CLI and not MCP
 

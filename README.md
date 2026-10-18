@@ -40,14 +40,19 @@ For MCP-side scale: one capability, the same task both ways.
 
 `read_text_file` is the real definition from
 `@modelcontextprotocol/server-filesystem@1.0.0`, captured from its `tools/list`
-response; 97 of its 260 tokens are prose. That server costs 2,879 tokens for 14
-tools (205.6 each) against 61 tokens for the 16-name `f` index (3.8 each).
+response; 97 of its 260 tokens are prose, and it is that server's largest tool
+rather than a typical one. The whole server costs 2,439 tokens across 14 tools, a
+mean of 174.2, against 61 tokens for the 16-name `f` index.
+
+Per capability that is 174.2 versus 3.8 — 46× to 108× depending on whether `f`'s
+side is the whole index or one name. The two are not identical costs: an MCP
+definition is the full interface and arrives on every request, while the index
+gives names and `f <uck> --help` costs extra, on demand.
 
 Per-tool MCP cost ranges from 77.6 (archived Puppeteer) to 963 (Sequential
 Thinking) — a 12× spread — so no single multiplier describes it. Sample and
-method: [tooltax](https://github.com/duskel/tooltax). Numbers move between
-releases; the same two servers measured here came out 20% higher than the
-2026-09-29 sample.
+method: [tooltax](https://github.com/duskel/tooltax), whose figures reproduce
+exactly when its own command is re-run against the same versions.
 
 A uck (f's word for a command) is a directory with an `index.js` that exports
 `register(ctx)`, so extending `f` is editing a file. Output is plain text: no

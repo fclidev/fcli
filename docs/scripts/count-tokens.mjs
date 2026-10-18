@@ -455,7 +455,11 @@ if (argv.includes("--snapshot")) {
           max: { server: "Sequential Thinking", tools: 1, value: 963 },
           filesystem: { tools: 14, value: 170.2 },
           githubArchived: { tools: 26, value: 138 },
-          playwright: { server: "microsoft/playwright-mcp", tools: 25, value: 151.7 },
+          playwright: {
+            server: "microsoft/playwright-mcp",
+            tools: 25,
+            value: 151.7,
+          },
           kubernetes: { tools: 23, value: 222.2 },
           notion: { tools: 24, value: 726.3 },
         },
@@ -463,12 +467,31 @@ if (argv.includes("--snapshot")) {
       // Measured here, same tokenizer, current packages. Higher than tooltax's
       // 2026-09-29 figures for the same two servers, and Playwright's tool count
       // moved 24 -> 25 between the README and LEADERBOARD.md in one repo. These
-      // numbers drift; the date is part of the figure.
+      // Numbers drift; the date is part of the figure.
+      // Reproduced with tooltax's own command, not a homemade measurement, so
+      // these are directly comparable to the leaderboard above. An earlier
+      // version of this block held a per-tool sum (2,879 / 4,413) mislabeled as
+      // a server total: tokenizing each tool as its own JSON object strips the
+      // array separators and one layer of braces, which reads ~18% high.
       reMeasured: {
-        measuredAt: new Date().toISOString().slice(0, 10),
-        command: "npx tooltax score npm:<package>",
-        filesystem: { pkg: "@modelcontextprotocol/server-filesystem@1.0.0", tools: 14, tokens: 2879, perTool: 205.6 },
-        playwright: { pkg: "@playwright/mcp (latest)", tools: 25, tokens: 4413, perTool: 176.5 },
+        measuredAt: "2026-07-01",
+        command:
+          "npx tooltax score npm:<package> (or cmd:... for servers needing args)",
+        filesystem: {
+          pkg: "@modelcontextprotocol/server-filesystem@1.0.0",
+          tools: 14,
+          tokens: 2439,
+          perTool: 174.2,
+        },
+        playwright: {
+          pkg: "@playwright/mcp@0.0.83",
+          tools: 25,
+          tokens: 3793,
+          perTool: 151.7,
+        },
+        note:
+          "Filesystem matches the 2026-09-29 leaderboard within one added schema " +
+          "field (2,383 / 170.2 there). Playwright matches it exactly.",
       },
       mcpTurnstile: {
         url: "https://github.com/singhpratech/mcp-turnstile/blob/main/report/BENCHMARK.md",
