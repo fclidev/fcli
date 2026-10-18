@@ -26,8 +26,8 @@ export interface NavSection {
 export const PAGES: NavSection[] = [
   { title: "Start", items: ["index", "install", "quickstart"] },
   { title: "Core", items: ["docs/ucks", "docs/config", "docs/skills", "docs/credentials"] },
-  { title: "Extend", items: ["extend", "update", "recipes"] },
-  { title: "Reference", items: ["builtins", "measurements"] },
+  { title: "Extend", items: ["docs/extend", "docs/update", "docs/recipes"] },
+  { title: "Reference", items: ["docs/builtins", "docs/measurements"] },
 ];
 
 /**

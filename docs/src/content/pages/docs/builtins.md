@@ -163,7 +163,7 @@ f uck push greet ls -r mine                # only these ucks
 ```
 
 Pushes are fast-forward only, never `--force`; authentication is delegated to
-`git`. See [Update](/update/).
+`git`. See [Update](/docs/update/).
 
 ## Core builtins
 
@@ -178,7 +178,7 @@ they work even with an empty store:
 `f help`, `f --help`, `f -h`, and bare `f` are the same thing. Both are handled
 before the uck registry is consulted, so they answer even with an empty store —
 which is exactly why they are core and not ucks. `f up` is the
-only routine run that touches the network — see [Update](/update/).
+only routine run that touches the network — see [Update](/docs/update/).
 
 `f search` is **not** in that table: it is an ordinary uck in the default bundle,
 not core code. Ranking is the part of discovery most likely to need tuning, and a

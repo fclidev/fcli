@@ -35,8 +35,8 @@ and installs it into the store. The defaults are:
 `up` and `help` are core builtins — special-cased in core before the uck
 registry is read, so they work even with an empty store. `help` is the no-arg
 behavior; `up` re-fetches every configured source (see
-[Update](/update/)). Each builtin's subcommands are listed on the
-[Builtins](/builtins/) page.
+[Update](/docs/update/)). Each builtin's subcommands are listed on the
+[Builtins](/docs/builtins/) page.
 
 ## Add a uck
 

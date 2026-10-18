@@ -13,7 +13,7 @@ A uck is a unit of `f` functionality. The builtins are ucks; extensions are
 ucks; `f config add ucks <source>` is the same mechanism pointed at a different
 source. An uck is only a word when prefixed with `f-`.
 
-What ships on a fresh install is listed on the [Builtins](/builtins/) page.
+What ships on a fresh install is listed on the [Builtins](/docs/builtins/) page.
 
 A uck is a **directory** containing an `index.js` (plus any supporting files).
 The `index.js` exports a `register(ctx)` function.
@@ -115,7 +115,7 @@ Every uck `f` knows about lives in **`~/.f/ucks/<bucket>/`**.
   clones each configured source into the store (only if not already
   present).
 - **Normal runs** just load the store — instant, no network.
-- **`f up`** fetches and resets every bucket (see [Update](/update/)).
+- **`f up`** fetches and resets every bucket (see [Update](/docs/update/)).
 - **The bucket is a cache.** Anything you edit under `~/.f/ucks/` is discarded
   on the next `f up`. Publish changes with `f uck push` instead.
 
@@ -192,5 +192,5 @@ uck under a bucket named after itself.
 **As a repo** — put uck directories in a git repo (`v/index.js`,
 `w/index.js`, …) and add the repo URL to `f.config.json`. `f` clones it into
 `~/.f/ucks/<bucket>/` and loads every uck directory inside it, at any depth.
-See [Config](/docs/config/) for source forms and [Extend](/extend/) for publishing
+See [Config](/docs/config/) for source forms and [Extend](/docs/extend/) for publishing
 ucks as npm packages.
