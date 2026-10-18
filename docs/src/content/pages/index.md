@@ -115,7 +115,7 @@ Two mechanisms limit the blast radius, and neither is a sandbox:
   [Shadowing](/docs/ucks/#shadowing).
 
 Installing a source means trusting it: `f config add ucks <source>` accepts an
-arbitrary GitHub repo or npm package. See [Config](/config/).
+arbitrary GitHub repo or npm package. See [Config](/docs/config/).
 
 ## Terms
 
@@ -126,7 +126,7 @@ arbitrary GitHub repo or npm package. See [Config](/config/).
   part of the path, so a git-sourced uck sits in its own clone and `git blame`
   works against installed commands. Layout: [The store](/docs/ucks/#the-store).
 - **Config** — `f.config.json`, global and project scopes merged, listing uck
-  sources and skills. Format and keys: [Config](/config/).
+  sources and skills. Format and keys: [Config](/docs/config/).
 
 ## Pages
 
@@ -135,15 +135,21 @@ arbitrary GitHub repo or npm package. See [Config](/config/).
 - [Builtins](/builtins/) — every command present on a fresh install, one section
   each.
 - [Ucks](/docs/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
-- [Config](/config/) — source declarations, subset selection, skills.
-- [Credentials](/credentials/) — encrypted store, provider fall-through, miss
+- [Config](/docs/config/) — source declarations, subset selection, skills.
+- [Credentials](/docs/credentials/) — encrypted store, provider fall-through, miss
   cache, packed files.
-- [Skills](/skills/) — markdown instruction files loaded into context on demand.
+- [Skills](/docs/skills/) — markdown instruction files loaded into context on demand.
 - [Extend](/extend/) — writing and registering an extension package.
 - [Update](/update/) — `f up`, and `f uck push`.
 - [Recipes](/recipes/) — a worked example: a specific API gap, the wrapper's
   behavior around it, and the change that closed it. Contains narrative; the
   reference pages above are the specification.
+
+## Ucks on npm
+
+- [Ucks](/ucks/) — packages tagged `fcli-uck`, listed live from the npm
+  registry. This is a catalogue rather than a reference page, so it sits outside
+  the documentation tree above and outside the sidebar.
 
 Source: [github.com/fclidev/fcli](https://github.com/fclidev/fcli) ·
 Default ucks: [github.com/fclidev/fcli-ucks](https://github.com/fclidev/fcli-ucks)

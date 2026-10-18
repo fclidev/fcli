@@ -25,7 +25,7 @@ export interface NavSection {
 
 export const PAGES: NavSection[] = [
   { title: "Start", items: ["index", "install", "quickstart"] },
-  { title: "Core", items: ["ucks", "docs/ucks", "config", "skills", "credentials"] },
+  { title: "Core", items: ["docs/ucks", "docs/config", "docs/skills", "docs/credentials"] },
   { title: "Extend", items: ["extend", "update", "recipes"] },
   { title: "Reference", items: ["builtins", "measurements"] },
 ];
@@ -56,6 +56,23 @@ export const allSlugs: string[] = PAGES.flatMap((s) => s.items);
  * link checker catches; adding a route without listing it here produces a build error.
  */
 export const ROUTE_PAGES: string[] = ["ucks"];
+
+/**
+ * Pages that exist and are published but are deliberately absent from the sidebar.
+ *
+ * /ucks/ is one: it is the npm package listing, and the sidebar is the documentation
+ * tree, so a catalogue of packages would be a different kind of thing in the same list.
+ * It is reached from the homepage instead.
+ *
+ * Declaring it here is not just bookkeeping. The orphan check exempts ROUTE_PAGES from
+ * "every content file is reachable from the sidebar", which means nothing would notice
+ * if the homepage stopped linking it either — the page would quietly become reachable
+ * only by guessing the URL. UNLINKED_PAGES tells the build where to look for that link,
+ * so dropping it from the homepage is a build error rather than an invisible orphan.
+ */
+export const UNLINKED_PAGES: { slug: string; linkedFrom: string }[] = [
+  { slug: "ucks", linkedFrom: "index" },
+];
 
 /**
  * Slug -> its section, for the sidebar's grouping and for the <title> of a page.

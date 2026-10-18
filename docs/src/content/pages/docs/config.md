@@ -84,7 +84,7 @@ The `skills` array registers markdown files by name:
 ```
 
 Managed with `f skills add` / `f skills rm`; ucks can also export skills that
-need no entry at all. See [Skills](/skills/).
+need no entry at all. See [Skills](/docs/skills/).
 
 ## f config
 

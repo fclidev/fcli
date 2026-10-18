@@ -21,7 +21,7 @@ SDK — all 491 generated REST endpoints, exposed by name
 (`f fj call repoGet ownerName=… repoName=…`) or by raw path
 (`f fj GET /repos/o/r`). The base URL comes from the git origin of the
 directory you run in, and the token comes from
-[`f creds`](/credentials/) under the instance's host name. Inside any
+[`f creds`](/docs/credentials/) under the instance's host name. Inside any
 clone, `f fj …` just works:
 
 ```sh

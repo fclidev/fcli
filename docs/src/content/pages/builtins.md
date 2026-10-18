@@ -58,7 +58,7 @@ f config remove 'ucks[?(@.source=="./old")]'   # remove by filter
 ```
 
 Values are JSON-parsed (numbers, bools, objects, arrays) or kept as raw
-strings. See [Config](/config/) for the file itself.
+strings. See [Config](/docs/config/) for the file itself.
 
 Other ucks can drive it programmatically: the uck module exports `configApi`
 alongside `register`, and its methods take an explicit target (a path,
@@ -86,7 +86,7 @@ f creds lock                           # stop daemon, zeroize key
 `request` / `waiters` / `fill` are the cross-terminal pattern: a uck in one
 terminal blocks on a credential it does not have, and the human in another
 terminal sees the open request (`waiters`) and answers it (`fill`). See
-[Credentials](/credentials/).
+[Credentials](/docs/credentials/).
 
 `--ttl` and `--timeout` take a plain number of seconds or a duration with
 `s`/`m`/`h`/`d`/`w` (`45m`, `2h`, `1d6h30m`).
@@ -97,7 +97,7 @@ Forgejo client can block on a token instead of failing when the token is
 missing.
 
 On a **local miss** `get` consults credential providers — see
-[providers](#providers) and [Credentials](/credentials/).
+[providers](#providers) and [Credentials](/docs/credentials/).
 
 ## providers
 
@@ -129,7 +129,7 @@ optional `has` / `status` / `mirrorTtlSec`, and the rule that a provider
 **throws** rather than returns `null` when it is broken — is normative in
 section 5 of `CONTRACT.md` in the
 [fcli-ucks](https://github.com/fclidev/fcli-ucks) repo. What `f creds` does with
-it is on [Credentials](/credentials/).
+it is on [Credentials](/docs/credentials/).
 
 ## skills
 
@@ -147,7 +147,7 @@ f skills rm <name>           # remove a skill
 
 `-g` targets the global config, same rule as `config`. First install seeds a
 `default` skill pointing at the `default.md` that ships inside the skills uck
-— that file is f's own usage guide. See [Skills](/skills/).
+— that file is f's own usage guide. See [Skills](/docs/skills/).
 
 ## uck
 
@@ -193,4 +193,4 @@ The eight ucks above are ucks like any other: plain `index.js` files in a repo
 you could fork, not code compiled into the binary. What makes them builtin is
 that they arrive automatically — the first install seeds that repo into the
 global config. Adding your own ucks is the same mechanism pointed at a
-different source: see [Ucks](/docs/ucks/) and [Config](/config/).
+different source: see [Ucks](/docs/ucks/) and [Config](/docs/config/).

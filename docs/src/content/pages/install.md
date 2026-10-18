@@ -50,4 +50,4 @@ the ucks it contains. The package is the published build of the
 as a versioned npm package instead of a git clone. Override the default source
 with the `F_UCKS_REPO` environment variable before the first run (a git URL
 still works — the clone flow is unchanged). See [Builtins](/builtins/) for what
-you get and [Config](/config/) for the full picture.
+you get and [Config](/docs/config/) for the full picture.

@@ -94,7 +94,7 @@ A uck may export anything else it wants — `configApi`, `credsApi`, `skills`,
 your own fields. Core ignores what it does not know; other ucks read it off
 `ctx.registry`. One export is read straight off the **module**, not the registry:
 `credentialProvider`, which is how a uck becomes a credential provider — see
-[Credentials](/credentials/).
+[Credentials](/docs/credentials/).
 
 ## The store
 
@@ -192,5 +192,5 @@ uck under a bucket named after itself.
 **As a repo** — put uck directories in a git repo (`v/index.js`,
 `w/index.js`, …) and add the repo URL to `f.config.json`. `f` clones it into
 `~/.f/ucks/<bucket>/` and loads every uck directory inside it, at any depth.
-See [Config](/config/) for source forms and [Extend](/extend/) for publishing
+See [Config](/docs/config/) for source forms and [Extend](/extend/) for publishing
 ucks as npm packages.

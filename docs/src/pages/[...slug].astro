@@ -24,7 +24,7 @@
  */
 import { getCollection, render } from "astro:content";
 import Page from "../layouts/Page.astro";
-import { allSlugs, ROUTE_PAGES, titleFor, urlFor } from "../nav";
+import { allSlugs, ROUTE_PAGES, UNLINKED_PAGES, titleFor, urlFor } from "../nav";
 
 export async function getStaticPaths() {
   const entries = await getCollection("pages");
@@ -46,6 +46,28 @@ export async function getStaticPaths() {
       `content files not reachable from the sidebar: ${orphaned.join(", ")}. ` +
         `Add them to PAGES in src/nav.ts or delete the file.`,
     );
+
+  // Pages off the sidebar on purpose (UNLINKED_PAGES) are exempt from the check above,
+  // which would otherwise be satisfied by their absence. Verify the substitute entry
+  // point actually links them: a page reachable only by typing its URL is not reachable,
+  // and the sitemap is not a navigation surface a human uses.
+  const rawBodies = new Map(entries.map((e) => [slugOf(e), e.body ?? ""]));
+  for (const { slug, linkedFrom } of UNLINKED_PAGES) {
+    const host = rawBodies.get(linkedFrom);
+    if (host === undefined)
+      throw new Error(`UNLINKED_PAGES: ${linkedFrom} has no content file to link from`);
+    // Any form of the link counts: /ucks/, /ucks, or /ucks/#fragment. A plain
+    // substring test rather than a RegExp: building one here cost two failed builds
+    // (a pattern starting with "/" parsed as a regex literal, then a module-scope
+    // escape helper turned out not to be in scope for path collection). This is an
+    // existence check and slugs contain no characters that would need escaping.
+    const needle = "](" + urlFor(slug).replace(/\/$/, "");
+    if (!host.includes(needle))
+      throw new Error(
+        `${urlFor(slug)} is off the sidebar and no longer linked from ` +
+          `${urlFor(linkedFrom)} — add the link back or put it in the sidebar`,
+      );
+  }
 
   // The sidebar labels every entry, on every page, so the whole map is computed once
   // here rather than re-read per page. Keyed by slug because Sidebar looks up by slug.
