@@ -568,14 +568,6 @@ body.home article {
    the width where that stops being true is the whole point of comparing: a reader
    scanning the MCP pane should see the f pane at the same moment, and two columns
    at 20rem each read as a comparison while two columns at 12rem read as noise. */
-.compare {
-  list-style: none;
-  margin: 1.75rem 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
 .compare-col {
   display: flex;
   flex-direction: column;
@@ -646,6 +638,13 @@ body.home article {
    the point of a comparison is that the reader sees the other column while scanning
    this one, and two columns at 20rem read as a pair where two at 12rem read as noise. */
 .compare {
+  /* Block, deliberately. The original design made .compare itself the two-column grid;
+     when the panes moved into .compare-panes that rule was never removed, so the job
+     line claimed column 1 and the panes were shoved into column 2 -- the right-half
+     shift. margin alone did not override display, which is why adding the second rule
+     above fixed the spacing and not the layout. A nested grid inside a parent grid of
+     the same shape is invisible in the source and obvious on the page. */
+  display: block;
   margin: 1.5rem 0 0;
 }
 .compare-job {
