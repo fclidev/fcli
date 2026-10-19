@@ -906,39 +906,6 @@ body.home article {
   border-radius: var(--radius);
   background: var(--panel);
 }
-.uck-group {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin: 1.1rem 0 0.35rem;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ink-faint);
-}
-.uck-group:first-child {
-  margin-top: 0;
-}
-.uck-group i {
-  font-style: normal;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--ink-faint);
-  opacity: 0.75;
-}
-/* The group caption carries a link, and `a` inherits --ink-faint at 0.75 opacity from
-   the rule above, which renders it as caption text you cannot tell is clickable.
-   Overriding only at :hover is worse -- a link you discover by hovering is a link you
-   reach by accident. Full opacity plus the accent keeps it legible as part of the
-   caption while still reading as an affordance. */
-.uck-group i a {
-  color: var(--accent);
-  opacity: 1;
-}
-.uck-group i a:hover,
-.uck-group i a:focus-visible {
-  text-decoration: underline;
-}
 .uck-row {
   display: grid;
   grid-template-columns: 9.5rem 1fr;

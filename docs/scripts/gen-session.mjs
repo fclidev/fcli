@@ -377,12 +377,18 @@ function counters(s) {
     user: t.user ? n(t.user) : 0,
     assistant: t.assistant ? n(t.assistant) : 0,
   }));
-  // Cumulative: the resident block (system + definitions) is present on every request,
-  // so it is added per turn, not once.
+  // Cumulative with prefix caching: the resident block (system + definitions) is
+  // sent in the body on every request, but prefix caching means it is only
+  // reprocessed (and billed at full rate) the first time. Subsequent turns pay
+  // only for the new tokens. This is the honest number for a provider with
+  // prefix caching (Anthropic, OpenAI, etc.).
   let acc = 0;
   const perTurn = [];
-  for (const t of turns) {
-    acc += defs + t.call + t.result + t.user + t.assistant;
+  for (let i = 0; i < turns.length; i++) {
+    const t = turns[i];
+    const turnTokens = t.call + t.result + t.user + t.assistant;
+    if (i === 0) acc += defs; // first request: pay for the resident block
+    acc += turnTokens;
     perTurn.push(acc);
   }
   return { defs, turns, cum: perTurn, total: acc };

@@ -7,34 +7,10 @@ title: Overview
 summary: f is a command line interface for LLM agents. Commands are directories with an index.js, discovered by running f rather than declared in a tool schema. Lists what ships, what discovery costs in tokens, and how to extend it.
 ---
 
-# Home
-
 `f` is a command line interface for LLM agents. It is a single executable on
 `PATH`; an agent learns its commands by running `f`, not from a declared tool
 schema. A command costs nothing until invoked, and the always-present cost is a
 name index rather than a description per command.
-
-```sh
-f creds get prod.db
-```
-
-5 tokens to write that call. 2 tokens describe it. Here is what an MCP tool for
-the same job costs:
-
-|                       | `f creds get prod.db` | `read_text_file` |
-| --------------------- | --------------------: | ---------------: |
-| To write the call     |                     5 |                5 |
-| Definition in the body|                     2 |              260 |
-
-Same 5 tokens to ask for the thing. Then 260 tokens of definition ride along in
-the request body whether or not the model uses it — cached or not — against 2
-tokens describing this one. What caching does and does not do with that 260 is
-in [Measurements](/docs/measurements/).
-
-The `f` index — every command name, one grid — costs 61 tokens for 16 ucks and
-is paid once per session. A tool definition instead sits in the request body on
-every call, cached or not; per capability that is 3.8 tokens against 174.2, the
-mean across the filesystem server's 14 tools.
 
 ## Context cost against MCP
 

@@ -75,7 +75,7 @@ const F = side(session.f);
 
 <div class="compare">
   <div class="compare-panes">
-    {[{ key: "mcp", label: "MCP", sub: `${MCP.tools.length} tools + exec`, data: MCP }, { key: "f", label: "f", sub: "bash + jq + index", data: F }].map((p) => (
+    {[{ key: "mcp", label: "MCP", sub: `${MCP.tools.length} tools + exec · prefix cached`, data: MCP }, { key: "f", label: "f", sub: "bash + jq + index · prefix cached", data: F }].map((p) => (
       <section class={"compare-col side-" + p.key} aria-label={`Session using ${p.label}`}>
         <p class="compare-head">
           <span class={"compare-svc" + (p.key === "f" ? " f" : "")}>{p.label}</span>
