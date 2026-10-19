@@ -18,15 +18,14 @@ There are three separate costs, and they behave differently under prefix
 caching.
 
 **Discovery.** Before the model can use a capability, it must know the capability
-exists. MCP declares this up front: every tool definition sits in the request
-body from the first token, so discovery is free at call time but paid on every
-request. `f` discovers at runtime: the agent runs `f` (a one-line name grid,
-61 tokens for 16 ucks) and `f search <query>` (a ranked list, a few tokens per
-match). The discovery cost is a turn, not a body field. That matters twice:
-the grid is 61 tokens against 3,575 for the GitHub server's 26 tools, and it
-is paid once, not on every request. A session with ten turns pays the `f`
-index 61 tokens total and the MCP definitions 3,575 × 10 = 35,750 (cached: 3,575
-× 10 × 10% = 3,575 on Anthropic, still 58× the grid).
+exists. Both sides can discover at runtime: MCP has tools/list, `f` has the name
+grid. The difference is what discovery *buys*. On `f`, the grid is the only
+capability cost in the body — the definitions never appear, so discovery
+replaces the body cost entirely. On MCP, the definitions ride in the body on
+every request regardless of whether the client called tools/list first, so
+discovery adds a turn but does not remove the per-request cost. A session with
+ten turns pays the `f` index 61 tokens total and the MCP definitions 3,575 × 10
+= 35,750 (cached: 3,575 × 10 × 10% = 3,575 on Anthropic, still 58× the grid).
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
@@ -41,8 +40,8 @@ OpenAI, against 100% on a miss.
 
 |                        | `f`                          | MCP, cached            | MCP, uncached |
 | ---------------------- | ---------------------------- | ---------------------: | ------------: |
-| Discovery, per session | 61 tokens (name grid)        | 0 (declared up front)  | 0 (declared up front) |
-| In the body, per request | never (names are runtime output) | full definition      | full definition |
+| Discovery | name grid, 61 tokens, once | tools/list, adds a turn, definitions still in body | same |
+| In the body, per request | never (names are runtime output) | full definition | full definition |
 | Re-processed, per request | never                     | not after the first    | every request |
 | Steady-state billing   | ≈ 0                          | definition × 10–50%    | full definition |
 | A tool never called    | 0                            | definition × 10–50%    | full definition |
