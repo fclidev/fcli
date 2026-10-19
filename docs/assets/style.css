@@ -898,34 +898,6 @@ body.home article {
   }
 }
 
-.uck-wall {
-  max-width: 34rem;
-  margin: 1.75rem 0 0;
-  padding: 1.1rem 1.15rem 1.15rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-.uck-row {
-  display: grid;
-  grid-template-columns: 9.5rem 1fr;
-  gap: 0.25rem 0.75rem;
-  align-items: baseline;
-  padding: 0.16rem 0;
-}
-.uck-row code {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-.uck-row span {
-  color: var(--ink-soft);
-  font-size: 0.83rem;
-  line-height: 1.4;
-}
 
 /* Install: one line, obviously copyable. The button is a progressive
    enhancement — app.js only paints it once a click handler is attached, so with

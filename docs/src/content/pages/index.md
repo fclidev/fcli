@@ -14,7 +14,17 @@ name index rather than a description per command.
 
 ## Context cost against MCP
 
-There are two separate costs, and they behave differently under prefix caching.
+There are three separate costs, and they behave differently under prefix
+caching.
+
+**Discovery.** Before the model can use a capability, it must know the capability
+exists. MCP declares this up front: every tool definition sits in the request
+body from the first token, so discovery is free at call time but paid on every
+request. `f` discovers at runtime: the agent runs `f` (a one-line name grid,
+61 tokens for 16 ucks) and `f search <query>` (a ranked list, a few tokens per
+match). The discovery cost is a turn, not a body field. Under prefix caching
+both are paid once per session, but the `f` index is a fraction of the tool
+definitions: 61 tokens versus 3,575 for the GitHub server's 26 tools.
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
@@ -22,13 +32,14 @@ a later request that repeats the same bytes skips the reprocessing. If the
 definitions are stable, their compute cost is paid once.
 
 **The bytes are still there.** The API is stateless, so every request carries the
-tool list in its body, and the model only "knows" a tool exists because it is in
+tool list in its body, and the model only “knows” a tool exists because it is in
 the tokens it is being fed right now. Caching discounts the rate, not the
 presence: cached input is billed at 10% of base on Anthropic, up to 95% off on
 OpenAI, against 100% on a miss.
 
 |                        | `f`                          | MCP, cached            | MCP, uncached |
 | ---------------------- | ---------------------------- | ---------------------: | ------------: |
+| Discovery, per session | 61 tokens (name grid)        | 0 (declared up front)  | 0 (declared up front) |
 | In the body, per request | never (names are runtime output) | full definition      | full definition |
 | Re-processed, per request | never                     | not after the first    | every request |
 | Steady-state billing   | ≈ 0                          | definition × 10–50%    | full definition |
