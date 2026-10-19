@@ -78,10 +78,19 @@ export async function run(argv: string[]): Promise<void> {
   const ucks: Record<string, Uck> = {};
   // Where each name currently comes from — for the shadowing warning (G9).
   const origin: Record<string, string> = {};
+  // Shadow warnings are a config problem, not a per-call error: print once,
+  // and only when a human is looking (TTY stderr). Piped output — the case
+  // that matters for LLMs — stays clean.
+  let shadowWarned = false;
+  const shadowWarn = (msg: string) => {
+    if (shadowWarned) return;
+    shadowWarned = true;
+    if (process.stderr.isTTY) console.error(`f: ${msg}`);
+  };
 
   for (const u of await loadStoreUcks(fVersion)) {
     if (ucks[u.name])
-      console.error(`f: uck '${u.name}' shadowed (store) by a later source`);
+      shadowWarn(`uck '${u.name}' shadowed (store) by a later source`);
     ucks[u.name] = u;
     origin[u.name] = "store";
   }
@@ -97,7 +106,7 @@ export async function run(argv: string[]): Promise<void> {
     );
     for (const uck of u) {
       if (ucks[uck.name])
-        console.error(`f: uck '${uck.name}' shadowed by npm:${specifier}`);
+        shadowWarn(`uck '${uck.name}' shadowed by npm:${specifier}`);
       ucks[uck.name] = uck; // later (project) sources override store/builtins
       origin[uck.name] = `npm:${specifier}`;
     }

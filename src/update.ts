@@ -159,7 +159,7 @@ async function runSources(
   opts: { __noLockForTests?: boolean } = {}
 ): Promise<void> {
   let ok = 0;
-  let fail = 0;
+  let unchanged = 0;
   // One lock for the whole update, not one per source: f up is fetch + reset
   // --hard + clean across every bucket, and releasing between sources would let
   // another process clone or copy into a bucket mid-sequence.
@@ -171,13 +171,16 @@ async function runSources(
     for (const src of sources) {
       const changed = await installSource(src, true);
       if (changed) ok++;
-      else fail++;
+      else unchanged++;
     }
   } finally {
     release();
   }
 
-  console.error(`f: update complete — ${ok} changed, ${fail} unchanged or failed\n`);
+  const parts = [];
+  if (ok) parts.push(`${ok} updated`);
+  if (unchanged) parts.push(`${unchanged} unchanged`);
+  console.error(`f: update complete — ${parts.join(", ") || "nothing to do"}\n`);
 }
 
 interface DirtyBucket {
