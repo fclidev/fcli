@@ -375,4 +375,4 @@ npm run typecheck
 
 ## License
 
-AGPL-3.0. See [LICENSE](./LICENSE).
+GPL-3.0. See [LICENSE](./LICENSE). Ucks (extension commands) are licensed separately per source; see each uck's own LICENSE or package.json.
