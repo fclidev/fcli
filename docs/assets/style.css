@@ -489,40 +489,15 @@ body.home .page {
 body.home .hero {
   max-width: none;
 }
-body.home .hero-title,
 body.home .hero-lede,
 body.home article {
   max-width: var(--measure);
 }
 
-/* A <p>, deliberately, not an <h1>: the hero line is the marketing hook, and the
-   document outline starts at the article's first heading. A second <h1> here
-   would put two document titles in the outline and give every screen reader on
-   the landing page an anchor-less duplicate. */
-.hero-title {
-  /* Two lines: block spans with a literal space *between the tags*. That space is
-     a text node of its own, so DOM textContent reads "tax for" while CSS
-     display:block still breaks the line — innerText and copy-paste get "tax\nfor",
-     and the space sits in the gap between boxes rather than wrapping a third line.
-     A plain <br> fixes neither textContent nor the run-together; no CSS can,
-     because concatenation without a separator is what textContent *is*. Spans are
-     block-level rather than a block inside <p>, which would render the same but is
-     not conforming HTML. */
-  display: block;
-  font-size: clamp(2.1rem, 4.6vw, 3.15rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
-  font-weight: 700;
-  margin: 0 0 0.9rem;
-  text-wrap: balance;
-}
-.hero-title > span {
-  display: block;
-}
 
 .hero-tag {
   /* The catchphrase, one notch under the headline: set in the accent, sized to
-     read as a subtitle rather than competing with .hero-title. */
+     read as a subtitle under the lede. */
   font-size: clamp(1.05rem, 1.7vw, 1.32rem);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -635,12 +610,6 @@ body.home article {
   display: block;
   margin: 1.5rem 0 0;
 }
-.compare-job {
-  margin: 0 0 0.9rem;
-  font-size: 0.86rem;
-  color: var(--ink-soft);
-  max-width: 46rem;
-}
 .compare-panes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -726,8 +695,7 @@ body.home article {
   font-size: 0.8rem;
   color: var(--ink-soft);
 }
-.compare-foot b,
-.compare-verdict b {
+.compare-foot b {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
@@ -922,11 +890,6 @@ body.home article {
 }
 .cache-miss {
   color: var(--code-err);
-}
-.compare-verdict {
-  margin: 0.7rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
 }
 
 @media (max-width: 56rem) {
@@ -1205,9 +1168,6 @@ body.has-hero .search {
   }
   .hero {
     padding-top: 0.5rem;
-  }
-  .hero-title {
-    font-size: 1.9rem;
   }
   .hero-lede {
     font-size: 1.02rem;

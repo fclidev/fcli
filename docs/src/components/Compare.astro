@@ -59,7 +59,6 @@
  * format. Regenerate: npm run measure:session
  */
 import session from "../data/session-comparison.json";
-import {UNFILTERED_RUNS_TOKENS, USEFUL_FIELDS_TOKENS, CONCLUSION_LINE, RUNS_LINES, CONCLUSION_TOKENS_IN} from "../data/runs-cost.mjs";
 
 const fmt = (v) => Number(v).toLocaleString();
 const side = (s) => ({
@@ -75,13 +74,6 @@ const F = side(session.f);
 ---
 
 <div class="compare">
-  <p class="compare-job">
-    Both sides, one job: find the failing Actions run, its failed job, and read the log.
-    Full text, nothing truncated — the volume is the argument. Tool definitions are real
-    (tools/list, 26 tools); API bodies are synthesized to the live schema. Every token
-    figure below is <code>o200k_base</code> over the text you are reading.
-  </p>
-
   <div class="compare-panes">
     {[{ key: "mcp", label: "MCP", sub: `${MCP.tools.length} tools + exec`, data: MCP }, { key: "f", label: "f", sub: "bash + jq + index", data: F }].map((p) => (
       <section class={"compare-col side-" + p.key} aria-label={`Session using ${p.label}`}>
@@ -114,22 +106,4 @@ const F = side(session.f);
       </section>
     ))}
   </div>
-
-  <p class="compare-verdict">
-    The runs endpoint costs <b>{fmt(UNFILTERED_RUNS_TOKENS)}</b> tokens to convey{" "}
-    <b>{fmt(USEFUL_FIELDS_TOKENS)}</b> — <b>{Math.round(UNFILTERED_RUNS_TOKENS / USEFUL_FIELDS_TOKENS)}×</b>,
-    because <code>repository</code> and <code>head_repository</code> are the same 46-key
-    object twice. But <code>conclusion</code> is line {CONCLUSION_LINE} of {RUNS_LINES},{" "}
-    {fmt(CONCLUSION_TOKENS_IN)} tokens in — the junk is <em>behind</em> the answer. A
-    harness that truncates by lines sees one run, must call again, and cannot then pipe:
-    cutting the JSON removes the filter. Truncation is a worse version of piping, and
-    piping is a <em>harness</em> capability — <code>bash</code> and{" "}
-    <code>exec</code> both have a shell and neither is charged for it. What differs is who owns the fix.{" "}
-    <code>f gh</code> has no projection flag, so the projection is retyped on every call;
-    a projection on <code>f</code> is one line of JSON in a checked-in uck, and the
-    server's tool list is someone else's upstream. Totals: <b>{fmt(MCP.total)}</b> against{" "}
-    <b>{fmt(F.total)}</b>, payload shared, the gap mostly the 26 declarations this job
-    cannot use.{" "}
-    <a href="/docs/measurements/">how these were measured</a>
-  </p>
 </div>
