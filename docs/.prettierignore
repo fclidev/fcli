@@ -1,7 +1,20 @@
-# The homepage hero is raw HTML inside content/index.md, and its terminal
-# transcript is column-aligned output (`f help`, run listings). Prettier's
-# markdown formatter collapses runs of spaces inside a <pre> block, which quietly
-# destroys that alignment — the transcript looked fine until someone ran
-# `npm run format`. dist/ is build output.
+# Two markdown files whose bytes are load-bearing, and Prettier rewrites both.
+#
+# The homepage hero (src/content/pages/index.md) carries a terminal transcript of
+# `f help` output: column-aligned, with runs of spaces that place the uck names in
+# a grid. Prettier's markdown formatter collapses those runs inside a <pre> block
+# and the alignment is destroyed silently — it looked fine until the next format run.
+#
+# src/content/pages/examples.md quotes a blockquote from a SKILL.md whose lines
+# exceed printWidth (80). Prettier cannot wrap a line that will not fit, so it
+# drops the "> " continuation on the line that overflows and the quote splits into
+# a blockquote plus a loose paragraph. Keeping the quote verbatim matters more than
+# format-on-save for that one page.
+#
+# Both files are prose otherwise; a formatter that handles <pre> and long quote
+# continuations can drop this list.
+#
+# dist/ is build output.
 dist/
-content/index.md
+src/content/pages/index.md
+src/content/pages/examples.md
