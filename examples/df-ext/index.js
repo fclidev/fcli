@@ -1,11 +1,10 @@
 import { execSync } from "node:child_process";
 
-// register(ctx) runs at LOAD time and gets the SAME ctx shape as run()
-// ({ fVersion, contractVersion, self, ucks, registry }) — but ucks/registry are
-// a PARTIAL view of whatever has already loaded, so use them only for feature
-// detection ("creds" in ctx.registry), never to conclude a peer is absent.
-// The authoritative peer lookup is ctx.registry in run(), the 3rd arg, where the
-// view is complete. ctx.uck(name) is gone; ctx.registry is the only accessor.
+// register(ctx) runs at LOAD time and gets a SUBSET of run()'s ctx: just
+// { fVersion, contractVersion, self }. It does NOT get ucks/registry — there is
+// no register-time view of peers to get wrong (core 0.4.0, contract v2, G11).
+// The one peer accessor is ctx.registry in run(), the 3rd arg, where every uck
+// is loaded. ctx.uck(name) is gone too. See CONTRACT.md N18/N19/N20.
 export function register(_ctx) {
   return {
     name: "df",

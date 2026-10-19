@@ -35,8 +35,10 @@ my-f-ext/
 
 ```js
 export function register(ctx) {
-  // ctx.fVersion — f's version
-  // ctx.self     — this package's name
+  // ctx.fVersion        — f's version
+  // ctx.contractVersion — the contract this core speaks (2)
+  // ctx.self            — this package's name
+  // (no ucks/registry here — peer access is run-time only)
 
   return {
     name: "myuck",
@@ -103,7 +105,8 @@ Extensions run in the full Node.js runtime, and they share the uck registry:
 - Import each other: `import { helper } from "@other/f-ext"`
 - Use `child_process`, `fs`, `http`, `net` — everything.
 - Call other ucks through `ctx.registry` in `run` (e.g. `ctx.registry.creds`),
-  not at register time — the registry does not exist yet then.
+  and only there — the register-time ctx does not carry `registry` at all, so a
+  peer lookup before `run` fails loud rather than seeing a partial view.
 - Modify or override core `f` behavior.
 
 No sandbox. No restrictions. Ucks are first-class.

@@ -20,15 +20,26 @@ export const DESC_MAX = 120;
  * make every uck author declare a version for nothing.
  *
  *   1 — the CONTRACT.md baseline as implemented in core 0.3.x, plus the G4
- *       reversal: one ctx shape at register + run time, and `ctx.registry` as
- *       the sole peer accessor (`ctx.uck()` deleted).
+ *       reversal: `ctx.registry` as the sole peer accessor (`ctx.uck()`
+ *       deleted). See v2 for what happened to the register-time view.
+ *
+ *   2 — the G11 reversal: register-time ctx no longer carries `ucks` or
+ *       `registry` at all. v1 handed register() a **partial** view whose
+ *       contents depended on load order (and it is not stable load order —
+ *       npm sources merge after the whole store pass, so a store uck can never
+ *       see an npm uck and not vice versa). A view no uck can depend on
+ *       correctly is not an interface, so it is gone rather than made
+ *       consistently unreliable. `ctx.uck` was deleted on exactly this logic
+ *       (N20: fail loud rather than degrade silently); v2 finishes it.
+ *       A v1 uck reading `ctx.registry` in register() now gets `undefined`
+ *       immediately, instead of an order-dependent map.
  *
  * Available to a uck at **register** time as `ctx.contractVersion`, so it can
  * branch before returning anything. Peers that expose their own versioned
  * surface should still feature-detect that separately — a core contract version
  * says nothing about a uck's release cadence.
  */
-export const CONTRACT_VERSION = 1;
+export const CONTRACT_VERSION = 2;
 
 /** A unit of f functionality. Only a word when prefixed with 'f-'. */
 export interface Uck {
@@ -61,14 +72,24 @@ export interface Uck {
 }
 
 /**
- * Context passed to a uck's register(). Identical keys to UckRunContext — one
- * shape, not two (G4). `ucks`/`registry` are a **partial view** here: imports
- * proceed in store order and register() runs during that walk, so only ucks
- * loaded before yours are present. Use them at register time for *feature
- * detection* (`"creds" in ctx.registry`), never for an authoritative peer
- * lookup — do that in run(), where the view is complete.
+ * Context passed to a uck's register(). This is a **strict subset** of
+ * UckRunContext, not an equal shape: register() gets identity and versioning
+ * only, and deliberately gets NO view of its peers (G11).
+ *
+ * Why the keys are absent rather than empty:
+ *  - `Object.freeze({})` makes `ctx.registry.x = y` throw, but leaves the
+ *    v1-documented idiom `"creds" in ctx.registry` present-but-always-false —
+ *    the worst outcome, because a uck following the docs to the letter gets a
+ *    confident wrong answer and degrades to a fallback that reads to a user as
+ *    "not configured".
+ *  - an absent key makes the same code throw `Cannot use 'in' operator` /
+ *    `ctx.registry is undefined` at load, on the spot.
+ *  - "absent" and "present-but-empty" become distinguishable, which they were
+ *    not under a partial view.
+ *
+ * Peer work belongs in run(), which is the only place every uck is loaded.
  */
-export interface UckContext {
+export interface UckRegisterContext {
   /** f's own version string */
   fVersion: string;
   /** The f <-> uck contract version this core implements. See CONTRACT_VERSION. */
@@ -80,7 +101,20 @@ export interface UckContext {
    * ucks it is only correct for one, which is why core enforces one per dir.)
    */
   self: string;
-  /** name + desc of every uck loaded SO FAR (complete at run time). */
+}
+
+/**
+ * Context passed to a uck's run() — after every uck is loaded. A uck can
+ * read any field (e.g. `skills`) exported by other ucks off the registry.
+ * Core imposes no restrictions on what a uck exports.
+ *
+ * This is UckRegisterContext **plus** the two discovery fields — the superset
+ * direction is what makes the subset safe: a uck written for register-time ctx
+ * typechecks in run(). `ctx` is rebuilt per invocation, so nothing captured
+ * from an earlier run can go stale.
+ */
+export interface UckRunContext extends UckRegisterContext {
+  /** name + desc of every registered uck — the same data `f help` prints. */
   ucks: { name: string; desc: string }[];
   /**
    * name -> the complete object a uck returned from register().
@@ -89,25 +123,17 @@ export interface UckContext {
    *
    * Everything on ctx, including this, must stay structured-cloneable —
    * credential providers are spawned as child processes (CONTRACT.md N20b).
+   *
+   * Present at run time ONLY. At register time this key does not exist (G11);
+   * do not reach for it before run().
    */
   registry: Record<string, Uck>;
 }
 
-/**
- * Context passed to a uck's run() — after every uck is loaded. A uck can
- * read any field (e.g. `skills`) exported by other ucks off the registry.
- * Core imposes no restrictions on what a uck exports.
- *
- * Same shape as UckContext; the difference is only that `ucks`/`registry` are
- * now complete. `ctx` is rebuilt per invocation, so nothing captured from an
- * earlier run can go stale.
- */
-export type UckRunContext = UckContext;
-
 /** What a uck module (index.js) exports */
 export interface UckModule {
   /** Called once at load time. Returns one or more ucks. */
-  register: (ctx: UckContext) => Uck[] | Uck;
+  register: (ctx: UckRegisterContext) => Uck[] | Uck;
 }
 
 /**

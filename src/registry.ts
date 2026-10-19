@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve, isAbsolute } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { clampDesc, satisfiesMinF, CONTRACT_VERSION, type Uck, type UckContext, type UckModule, type UckSource } from "./types.js";
+import { clampDesc, satisfiesMinF, CONTRACT_VERSION, type Uck, type UckRegisterContext, type UckModule, type UckSource } from "./types.js";
 import { installedUcks, resolvedUcks } from "./store.js";
 
 const require = createRequire(import.meta.url);
@@ -38,9 +38,10 @@ function toImportUrl(entry: string): string {
 
 /** Load every uck in the store, in stable load order. Later buckets shadow earlier ones.
  *
- * Load is one accumulating pass: each module's register() sees the ucks loaded
- * before it in `ctx.ucks`/`ctx.registry` (a partial view — CONTRACT.md N20a),
- * and the caller merges npm sources on top afterwards. */
+ * Load is one pass for discovery purposes: register() receives no view of its
+ * peers at all (G11), so nothing here depends on load order any more. Order
+ * still decides name shadowing (N9, last wins), which is the only remaining
+ * reason it has to be stable. */
 export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
   // Iterate the discovered entries directly, in load order. resolvedUcks() keys
   // by DIRECTORY basename, which is not the same thing as a registered uck name
@@ -54,26 +55,11 @@ export async function loadStoreUcks(fVersion: string): Promise<Uck[]> {
     const indexPath = join(entry.dir, "index.js");
     if (!existsSync(indexPath)) continue;
 
-    const loaded = await loadUckModule(indexPath, entry.name, fVersion, `store:${entry.bucket}`, snapshot(results));
+    const loaded = await loadUckModule(indexPath, entry.name, fVersion, `store:${entry.bucket}`);
     results.push(...loaded);
   }
 
   return results;
-}
-
-export interface UckView {
-  ucks: { name: string; desc: string }[];
-  registry: Record<string, Uck>;
-}
-
-/** The partial `ucks`/`registry` view handed to one register() call. */
-export function snapshot(loaded: Uck[]): UckView {
-  const registry: Record<string, Uck> = {};
-  for (const u of loaded) registry[u.name] = u;
-  return {
-    ucks: loaded.map((u) => ({ name: u.name, desc: u.desc })),
-    registry,
-  };
 }
 
 /**
@@ -87,7 +73,6 @@ export async function loadUckModule(
   self: string,
   fVersion: string,
   origin: string,
-  view: UckView = { ucks: [], registry: {} }
 ): Promise<Uck[]> {
   let mod: UckModule;
   try {
@@ -103,9 +88,12 @@ export async function loadUckModule(
     return [];
   }
 
-  // G4: one ctx shape. register() gets the same keys as run(), with
-  // ucks/registry holding whatever has loaded so far (CONTRACT.md N20a).
-  const ctx: UckContext = { fVersion, contractVersion: CONTRACT_VERSION, self, ucks: view.ucks, registry: view.registry };
+  // G11: register-time ctx carries identity + versioning ONLY. No `ucks`, no
+  // `registry`: the v1 partial view was keyed on load order, which is not a
+  // stability ucks are entitled to (npm sources merge after the whole store
+  // pass, so store->npm visibility is impossible and npm->store is automatic).
+  // Absent beats empty here because it fails loud — see UckRegisterContext.
+  const ctx: UckRegisterContext = { fVersion, contractVersion: CONTRACT_VERSION, self };
   let newUcks: Uck[] | Uck;
   try {
     newUcks = mod.register(ctx);
@@ -148,7 +136,6 @@ export async function loadUckModule(
 export async function loadFromNodeModules(
   specifier: string,
   fVersion: string,
-  view: UckView = { ucks: [], registry: {} }
 ): Promise<Uck[]> {
   let resolved: string;
   try {
@@ -158,7 +145,7 @@ export async function loadFromNodeModules(
     return [];
   }
   const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
-  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`, view);
+  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`);
 }
 
 /**
@@ -173,7 +160,6 @@ export async function loadFromNodeModules(
 export async function loadFromNodeModulesMaybe(
   specifier: string,
   fVersion: string,
-  view: UckView = { ucks: [], registry: {} }
 ): Promise<Uck[]> {
   let resolved: string;
   try {
@@ -182,5 +168,5 @@ export async function loadFromNodeModulesMaybe(
     return [];
   }
   const name = specifier.includes("/") ? specifier.split("/").pop()! : specifier;
-  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`, view);
+  return loadUckModule(resolved, name, fVersion, `npm:${specifier}`);
 }

@@ -5,7 +5,6 @@ import {
   loadStoreUcks,
   loadFromNodeModules,
   loadFromNodeModulesMaybe,
-  snapshot,
   sourceKind,
 } from "./registry.js";
 import {
@@ -99,11 +98,7 @@ export async function run(argv: string[]): Promise<void> {
     if (sourceKind(specifier) !== "npm") continue;
     // Legacy npm sources (pre-store-install) live in a surrounding
     // node_modules; skip silently if they never resolved there.
-    const u = await loadFromNodeModulesMaybe(
-      specifier,
-      fVersion,
-      snapshot(Object.values(ucks)),
-    );
+    const u = await loadFromNodeModulesMaybe(specifier, fVersion);
     for (const uck of u) {
       if (ucks[uck.name])
         shadowWarn(`uck '${uck.name}' shadowed by npm:${specifier}`);
@@ -184,6 +179,10 @@ export async function run(argv: string[]): Promise<void> {
       // in-tree call sites already used `registry`. Deleting the key fails loud
       // (`ctx.uck is not a function`) instead of silently degrading a peer read
       // to a socket fallback that reports "no-store" as "not configured".
+      //
+      // G11: `ucks`/`registry` live HERE and only here. register() gets neither
+      // (see UckRegisterContext), so run() is the single place a uck can see a
+      // peer — there is no earlier view to get wrong.
       registry,
     };
     // G3: a numeric return maps to process.exitCode; undefined → 0.

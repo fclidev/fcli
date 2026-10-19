@@ -2,6 +2,46 @@
 
 All notable changes to the f CLI.
 
+## [0.4.0]
+
+### Changed (breaking, contract v2 — G11)
+- **The register-time ctx no longer carries `ucks` or `registry`.** `register()`
+  receives `{ fVersion, contractVersion, self }` and nothing else; `run()` is
+  unchanged and remains the only place a uck can see a peer. The v1 register-time
+  view was partial, and not partial along a stable axis: it tracked load order
+  *and* source kind (npm sources merge after the whole store pass), so a store
+  uck could never see an npm uck while an npm uck always saw the store. No uck
+  could depend on that correctly, and N20a's "feature detection only" rule could
+  not fix a property of the loader.
+- **`CONTRACT_VERSION` 1 → 2**, per the field's own bump rule (the meaning of an
+  existing ctx key changed for code already written). Read it at register time to
+  branch; `fVersion` cannot answer interface questions.
+- Why absent rather than `Object.freeze({})`: an empty object keeps the v1-documented
+  `"creds" in ctx.registry` idiom alive while making it guaranteed-false, which
+  degrades a peer read to a fallback reporting "no-store" as "not configured" —
+  the same silent-degradation failure `ctx.uck` was deleted for. Absent throws.
+
+### Removed
+- `snapshot()` and `UckView` from `registry.ts` — no partial view to snapshot.
+  `loadUckModule` / `loadFromNodeModules{,Maybe}` lose their `view` parameter.
+
+### Migration
+One grep per bucket; check that each hit is lexically inside `run`:
+```bash
+grep -rn "ctx\.registry\|ctx\.ucks" --include=*.js . | grep -v node_modules
+```
+Adoption in the installed buckets was already zero at register time — every peer
+site (`fj`, `grocy`, `ha`, `ha-ws`, `skills`, `search`, `gh`) lived in `run`.
+
+### Tests
+- New `test/ctx-register.test.ts`: pins the exact register key set, asserts the keys
+  are *absent* (not empty), and asserts both v1 idioms throw `TypeError`. Includes
+  an end-to-end case proving `run()` still sees every peer — so "delete it from
+  register" cannot quietly become "delete it everywhere".
+- `test/ctx-contract.test.ts` drops the "register-time view is partial — earlier
+  peers only" cases: they asserted a race was working as intended. Retained here as
+  a split note; see the file header.
+
 ## [0.3.3]
 
 ### Added

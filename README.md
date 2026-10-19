@@ -299,15 +299,16 @@ my-f-ext/
 
 ```js
 export function register(ctx) {
-  // ctx.fVersion  — f's version
-  // ctx.ucks      — [{name, desc}] of all previously registered ucks
-  // ctx.self      — this extension's source label
+  // ctx.fVersion        — f's version
+  // ctx.contractVersion — the contract this core speaks (2)
+  // ctx.self            — this uck's registered name
 
   return {
     name: "myuck",
     desc: "what it does (terse)",
-    run: (argv, args) => {
+    run: (argv, args, runCtx) => {
       // args._ is the remaining CLI args
+      // runCtx additionally has runCtx.ucks + runCtx.registry (peer access)
       console.log("hello", args._.join(" "));
     },
   };
@@ -349,7 +350,8 @@ Full Node.js runtime. Extensions can:
 
 - Import each other: `import { helper } from "@other/f-ext"`
 - Use `child_process`, `fs`, `http`, `net` — everything
-- Inspect other ucks via `ctx.ucks`
+- Inspect and call other ucks via `ctx.ucks` / `ctx.registry` **in `run`** — the
+  register-time ctx carries neither
 - Modify or override core f behavior
 
 No sandbox. No restrictions. Ucks are first-class.

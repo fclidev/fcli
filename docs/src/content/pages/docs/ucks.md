@@ -23,11 +23,10 @@ The `index.js` exports a `register(ctx)` function.
 ```js
 // index.js
 export function register(ctx) {
-  // ctx.fVersion        — f's version, e.g. "0.3.1"
-  // ctx.contractVersion — the contract version this core implements (1)
+  // ctx.fVersion        — f's version, e.g. "0.4.0"
+  // ctx.contractVersion — the contract version this core implements (2)
   // ctx.self            — this uck's own name
-  // ctx.ucks            — [{name, desc}] of every loaded uck
-  // ctx.registry        — name -> everything that uck returned
+  // that's all — there is no peer view at register time (see below)
 
   return {
     name: "myuck", // the word after `f`
@@ -35,7 +34,7 @@ export function register(ctx) {
     run: (argv, args, runCtx) => {
       // args._ is the remaining CLI args
       // argv is the full argv
-      // runCtx has the same five keys as ctx above — see "One ctx shape"
+      // runCtx has the three keys above PLUS ucks + registry — see below
       process.stdout.write("hi\n");
     },
   };
@@ -52,19 +51,35 @@ export default { register };
 
 ### One ctx shape, two moments
 
-`register()` and `run()` receive the **same five keys**: `fVersion`,
-`contractVersion`, `self`, `ucks`, `registry`. Core builds both from one object
-shape, so they cannot drift apart. What differs is what is _in_ them:
+`register()` receives a **subset** of what `run()` receives — not an identical
+object. `run()` gets five keys: `fVersion`, `contractVersion`, `self`, `ucks`,
+`registry`. `register()` gets the first three, and **no view of its peers**:
 
-- At **register** time `ucks`/`registry` are a **partial view** — only the ucks
-  that loaded before yours, and not your own name. Use it there for feature
-  detection (`"creds" in ctx.registry`), never for an authoritative peer lookup.
-- At **run** time the view is complete: `ucks` is every registered uck (name +
-  desc) and `registry` holds every registered uck. Inter-uck calls belong in
-  `run`.
+- At **register** time: `fVersion`, `contractVersion`, `self`. That is the whole
+  object. Peer discovery is not available, by design.
+- At **run** time: plus `ucks` (every registered uck, name + desc — the same
+  data `f help` prints) and `registry` (name → everything that uck returned).
+  Inter-uck calls belong here, and can only go here.
+
+Because the subset runs one way — register ctx ⊂ run ctx — code written against
+the register-time object also typechecks inside `run()`. The reverse does not
+hold, which is the point.
+
+**Why the keys are absent rather than empty.** An earlier core handed
+`register()` a _partial_ registry — "whatever has loaded so far" — and the rule
+was "feature detection only, never an authoritative lookup". That rule was
+patching something unfixable: the partial view tracked load order _and_ source
+kind, and npm sources merge after the whole store pass, so a store uck could
+never see an npm uck while an npm uck always saw the store. Renaming a bucket
+flipped the answer. `Object.freeze({})` is not better — it would keep the
+documented `"creds" in ctx.registry` idiom syntactically alive while making it
+always false, and a uck that trusts it degrades to a fallback reporting
+"no-store" as "not configured". An absent key throws instead. Both failure modes
+are now loud, at load, on the offending line.
 
 ```js
 export function register(_ctx) {
+  // Do not reach for peers here — ctx.registry is undefined at this point.
   return {
     name: "myuck",
     desc: "borrow a token",
@@ -77,18 +92,19 @@ export function register(_ctx) {
 ```
 
 `contractVersion` is an **interface** number, not a release number: `fVersion`
-(`"0.3.1"`) tells you which build of f is running, `contractVersion` (`1`) which
-contract it speaks. A uck written against contract 1 can branch on it at
-register time, before returning anything. It says nothing about a _peer's_ release
+(`"0.4.0"`) tells you which build of f is running, `contractVersion` (`2`) which
+contract it speaks. A uck written against contract 2 can branch on it at
+register time, before returning anything — it survives precisely because it is
+the only pre-run signal there is. It says nothing about a _peer's_ release
 cadence — feature-detect `credsApi`, `configApi` or a credential provider on its
 own surface, not on this number.
 
-`ctx.registry` is the **only** peer accessor. `ctx.uck(name)` — 0.3.0's sugar over
-`registry[name]` — is deleted, with no deprecation cycle: the key is absent, so a
-uck still calling it fails loud (`ctx.uck is not a function`) instead of quietly
-falling back to a socket read that reports "no-store" as "not configured". The
-map is read-only by convention: registration happens through `register()`, never
-by mutating it.
+`ctx.registry` is the **only** peer accessor, and `run()` is the **only** moment
+it exists. `ctx.uck(name)` — 0.3.0's sugar over `registry[name]` — is deleted,
+with no deprecation cycle: the key is absent, so a uck still calling it fails
+loud (`ctx.uck is not a function`) instead of quietly falling back to a socket
+read that reports "no-store" as "not configured". The map is read-only by
+convention: registration happens through `register()`, never by mutating it.
 
 A uck may export anything else it wants — `configApi`, `credsApi`, `skills`,
 your own fields. Core ignores what it does not know; other ucks read it off
