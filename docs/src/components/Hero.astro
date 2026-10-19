@@ -1,17 +1,12 @@
 ---
 /**
- * Homepage hero: title, lede, install command, terminal transcript, uck wall.
+ * Homepage hero: title, lede, install command, comparison, uck wall.
  *
  * This lives in code rather than in content/index.md because it is markup, not prose:
- * a gradient title, a copy button wired by `data-copy`, and a transcript whose
- * column-0 lines (`config  creds  fj …`) cannot survive the indentation rules of a
- * YAML block scalar. It used to sit in the markdown behind a `!!!hero` fence that a
- * build step cut out and re-injected with set:html; an mdast plugin cannot do that any
- * more (the fence is not a single node, and Sätteri offers no source-rewriting hook),
- * and the two attempts to keep it in markdown both leaked literal `!!!hero` text onto
- * the page. As a component there is no fence, no set:html, and no channel by which a
- * content file could inject markup into the page — which is the property the rest of
- * the pipeline relies on.
+ * a gradient title, a copy button wired by `data-copy`, and a comparison pane whose
+ * tool definitions and API responses are too long for a YAML block scalar. As a
+ * component there is no channel by which a content file could inject markup into the
+ * page — which is the property the rest of the pipeline relies on.
  *
  * Rendered by Page.astro only when the frontmatter declares `hero: true`, so it cannot
  * appear on a page by accident.
@@ -23,7 +18,7 @@
  * the component owns it so it cannot be forgotten by a caller.
  *
  * Class names here are load-bearing: style.css owns .hero-title, .hero-lede,
- * .install, .terminal, .uck-wall and friends, and app.js finds the copy button via
+ * .install, .uck-wall and friends, and app.js finds the copy button via
  * [data-copy] and the target via the id on the code element.
  */
 import Compare from "./Compare.astro";
@@ -36,27 +31,6 @@ import Compare from "./Compare.astro";
   <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy install command">Copy</button>
 </div>
 <Compare />
-<div class="terminal" aria-label="Example f session">
-  <div class="term-bar"><i></i><i></i><i></i><span>~/repo</span></div>
-  <pre><code><span class="t-cmd">f</span>
-config     creds      fj        ha         ls         skills     v
-creds      df         gh        ha-ws      pi-models  ssh        w
-
-<span class="t-cmd">f search credential</span>
-creds store credentials (scrypt+AES-GCM,…
-providers list credential providers reg…
-vaultwarden read secrets from a Vaultwar…
-
-<span class="t-cmd">f creds status</span>
-unlocked 8m12s left
-
-<span class="t-cmd">f fj runs newest</span>
-3774 success pull_request fec3afa9 #1291 9m
-3773 failure pull_request 58eb1186 #1291 9m
-
-<span class="t-cmd">f fj joblogs 3773 "--- FAIL"</span>
-build-lint-test-4491-attempt-1.log:9348:--- FAIL: TestListWebhooks (6.68s)</code></pre>
-</div>
 <div class="uck-wall" aria-label="Ucks from different sources, all answering as f">
   <p class="uck-group"><span>defaults</span><i>@fcli.dev/ucks, installed on first run</i></p>
   <div class="uck-row"><code>f creds</code><span>store credentials, encrypted, with a TTL daemon</span></div>

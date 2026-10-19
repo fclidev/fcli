@@ -72,7 +72,22 @@
     });
     stream.scrollTop = stream.scrollHeight;
     stream.style.overflow = "";
+    // Make tool calls and results collapsible now that the stream is done.
+    enableCollapse(stream);
     settle(key);
+  }
+
+  /* Collapsible tool calls and results. Clicking a .ln.call or .ln.result
+     collapses it to a one-line summary (max-height: 1.4em, overflow hidden)
+     and shows a "▸" indicator; clicking again expands it. The full text is
+     preserved in the DOM (just clipped), so copying still works. */
+  function enableCollapse(stream) {
+    [].slice.call(stream.querySelectorAll(".ln.call, .ln.result")).forEach(function (el) {
+      el.classList.add("collapsible");
+      el.addEventListener("click", function () {
+        el.classList.toggle("collapsed");
+      });
+    });
   }
 
   function run(stream, key) {

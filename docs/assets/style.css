@@ -13,7 +13,7 @@
   --sidebar: 16.5rem;
   --toc: 13.5rem;
   --main: 60rem;
-  /* Column padding, declared once: .page uses it and the home terminal inverts it to
+  /* Column padding, declared once: .page uses it and the home hero inverts it to
      break out of the column. Two literals would disagree the moment a breakpoint
      overrides one. */
   --page-pad: 2rem;
@@ -458,7 +458,7 @@ aside {
 
 /* The landing page only. It sits outside <article>, so it needs its own measure
    rather than inheriting the prose one — and it must be allowed to go wider than
-   the text column, because a terminal that wraps is worse than no terminal. */
+   the text column, because a transcript that wraps is worse than no transcript. */
 .hero {
   max-width: var(--measure);
   padding-top: 1.5rem;
@@ -475,7 +475,7 @@ aside {
  *
  * Text measures are deliberately untouched. Prose stays at 60rem because a line of
  * body copy at 1600px runs past 200 characters and stops being readable; what was wrong
- * was the canvas, not the column. The terminal is full-bleed via a symmetric negative
+ * was the canvas, not the column. The comparison is full-bleed via a symmetric negative
  * margin, which cannot shift it horizontally the way `width: 100vw` does when a
  * scrollbar is present.
  *
@@ -485,18 +485,6 @@ aside {
  */
 body.home .page {
   background: var(--panel);
-}
-body.home .hero .terminal {
-  /* Full-bleed without leaving the grid: a symmetric negative margin the exact width of
-     the column padding, so the box widens equally both ways and cannot drift off-centre
-     (which `width: 100vw` does when a scrollbar is present). Symmetric also means a
-     wrong value is merely a wrong width, never a shifted block. Tracks --page-pad so the
-     mobile breakpoint, which narrows that padding, keeps working. */
-  width: auto;
-  margin-inline: calc(var(--page-pad) * -1);
-  border-radius: 0;
-  border-left: 0;
-  border-right: 0;
 }
 body.home .hero {
   max-width: none;
@@ -843,6 +831,29 @@ body.home article {
   border-left-color: var(--code-fn);
   color: var(--code-str);
 }
+/* Collapsible tool calls and results: click to fold to one line, click again to
+   expand. The full text stays in the DOM (clipped by max-height), so copying
+   still works. The ▸/▾ indicator sits in the left gutter. */
+.ln.collapsible {
+  cursor: pointer;
+  position: relative;
+}
+.ln.collapsible::before {
+  content: "▾";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.3rem;
+  font-size: 0.6rem;
+  color: var(--code-plain);
+  opacity: 0.6;
+}
+.ln.collapsible.collapsed {
+  max-height: 1.4em;
+  overflow: hidden;
+}
+.ln.collapsible.collapsed::before {
+  content: "▸";
+}
 .ln.body {
   border-left-color: var(--code-str);
 }
@@ -1042,60 +1053,6 @@ body.has-copy .copy {
   border-color: var(--accent);
 }
 
-/* Terminal: the proof. Deliberately not a screenshot — real text, selectable,
-   searchable, and it reaches llms.txt. */
-.terminal {
-  border-radius: var(--radius);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--code-bg);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 12px 28px -18px rgba(0, 0, 0, 0.35);
-}
-.term-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.75rem;
-  background: color-mix(in srgb, var(--code-bg) 82%, #fff 18%);
-  border-bottom: 1px solid var(--line);
-}
-.term-bar i {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--line);
-}
-.term-bar span {
-  margin-left: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--code-plain);
-}
-.terminal pre {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0.9rem 1rem 1.1rem;
-  font-size: 0.8rem;
-  line-height: 1.6;
-  color: var(--code-ink);
-}
-.terminal pre code {
-  display: block;
-  white-space: pre;
-}
-.t-cmd {
-  color: var(--accent);
-  font-weight: 600;
-}
-.t-cmd::before {
-  content: "$ ";
-  color: var(--code-plain);
-  font-weight: 400;
-}
 
 /* Under the hero the page resumes as prose — but the first heading is now a
    section heading, not the document title, so it must not shout. */
@@ -1210,7 +1167,7 @@ body.has-hero .search {
   body.has-sidebar.has-toc .page,
   body:not(.has-sidebar) .page {
     grid-template-columns: minmax(0, 1fr);
-    /* Tracks --page-pad so the home terminal's negative margin stays correct here. */
+    /* Tracks --page-pad so the home hero's negative margin stays correct here. */
     --page-pad: 1.25rem;
     padding-inline: var(--page-pad);
     gap: 0;
@@ -1261,15 +1218,5 @@ body.has-hero .search {
   .install pre {
     font-size: 0.8rem;
     padding-right: 4.5rem;
-  }
-  /* A transcript that scrolls sideways on a phone is unreadable; let it wrap at
-     word boundaries and drop the $ prompt gutter to keep the measure honest. */
-  .terminal pre {
-    font-size: 0.72rem;
-    padding: 0.7rem 0.75rem 0.9rem;
-  }
-  .terminal pre code {
-    white-space: pre-wrap;
-    word-break: break-word;
   }
 }
