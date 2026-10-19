@@ -103,7 +103,12 @@
       h.style.display = "none";
     });
 
-    var dur = 12000;
+    // Same rate for both panes: characters per second is fixed, so the MCP
+    // side (27k chars) runs longer than the f side (5k chars) but they type at
+    // the same speed. A fixed 12s duration would make the longer side race and
+    // the shorter side crawl.
+    var CPS = 1200; // characters per second
+    var dur = Math.max(2000, Math.ceil(totalChars / CPS) * 1000);
     var t0 = null;
 
     function frame(now) {
