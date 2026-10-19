@@ -21,7 +21,7 @@ f
 ```
 
 ```text
-f v0.3.3
+f v<version>
 
 config     creds      providers    search       skills       uck          v
 
