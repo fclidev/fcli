@@ -14,18 +14,13 @@ name index rather than a description per command.
 
 ## Context cost against MCP
 
-There are three separate costs, and they behave differently under prefix
-caching.
+Three costs, compared assuming both sides use their best strategy: MCP with
+prefix caching and tools/list discovery, `f` with its name grid.
 
-**Discovery.** Before the model can use a capability, it must know the capability
-exists. Both sides can discover at runtime: MCP has tools/list, `f` has the name
-grid. The difference is what discovery *buys*. On `f`, the grid is the only
-capability cost in the body — the definitions never appear, so discovery
-replaces the body cost entirely. On MCP, the definitions ride in the body on
-every request regardless of whether the client called tools/list first, so
-discovery adds a turn but does not remove the per-request cost. A session with
-ten turns pays the `f` index 61 tokens total and the MCP definitions 3,575 × 10
-= 35,750 (cached: 3,575 × 10 × 10% = 3,575 on Anthropic, still 58× the grid).
+**Discovery.** MCP: one tools/list call, full definitions cached from then on.
+`f`: one `f` call, 61-token name grid cached from then on. Both are paid once
+per session. The `f` grid is 61 tokens; the MCP definitions are 3,575 for the
+GitHub server's 26 tools.
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
@@ -38,14 +33,14 @@ the tokens it is being fed right now. Caching discounts the rate, not the
 presence: cached input is billed at 10% of base on Anthropic, up to 95% off on
 OpenAI, against 100% on a miss.
 
-|                        | `f`                          | MCP, cached            | MCP, uncached |
-| ---------------------- | ---------------------------- | ---------------------: | ------------: |
-| Discovery | name grid, 61 tokens, once | tools/list, adds a turn, definitions still in body | same |
-| In the body, per request | never (names are runtime output) | full definition | full definition |
-| Re-processed, per request | never                     | not after the first    | every request |
-| Steady-state billing   | ≈ 0                          | definition × 10–50%    | full definition |
-| A tool never called    | 0                            | definition × 10–50%    | full definition |
-| Occupies the context window | no                       | always                 | always        |
+|                        | `f`                          | MCP, cached + tools/list |
+| ---------------------- | ---------------------------- | ---------------------: |
+| Discovery, once        | 61 tokens (name grid)        | 3,575 tokens (26 defs) |
+| In the body, per request | never (names are runtime output) | full definition      |
+| Re-processed, per request | never                     | not after the first    |
+| Steady-state billing   | ≈ 0                          | definition × 10–50%    |
+| A tool never called    | 0                            | definition × 10–50%    |
+| Occupies the context window | no                       | always                 |
 
 The first request always pays full, and so does every request after the bytes
 change. Caching is a prefix match on exact bytes: one tool added, removed, or
@@ -61,9 +56,10 @@ So the defensible claims are the two the cache does not remove:
 - their **compute** cost is the only one caching removes, and only while the
   bytes are stable.
 
-`f` has neither failure mode: it never serializes a definition into the body, so
-there is nothing to cache, nothing to invalidate, and nothing occupying the
-window between invocations.
+Discovery does not fix either: tools/list puts the full definitions in the
+context window, and caching only discounts their rate. `f` has neither failure
+mode: the name grid is 61 tokens that occupy 0.03% of a 200k window, and it is
+paid once.
 
 No host process on the `f` side: one binary on `PATH`, no daemon. Details in
 [Why a CLI and not MCP](#why-a-cli-and-not-mcp).
