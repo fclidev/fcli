@@ -112,25 +112,6 @@ arbitrary GitHub repo or npm package. See [Config](/docs/config/).
 - **Config** — `f.config.json`, global and project scopes merged, listing uck
   sources and skills. Format and keys: [Config](/docs/config/).
 
-## Pages
-
-- [Install](/install/) — `npm i -g @fcli.dev/f`, and what the first run writes.
-- [Quickstart](/quickstart/) — run `f`, search it, add a uck, run it.
-- [Examples](/examples/) — a uck an agent wrote in one session, in full: the file,
-  the help text, and what it learned along the way.
-- [Builtins](/docs/builtins/) — every command present on a fresh install, one section
-  each.
-- [Ucks](/docs/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
-- [Config](/docs/config/) — source declarations, subset selection, skills.
-- [Credentials](/docs/credentials/) — encrypted store, provider fall-through, miss
-  cache, packed files.
-- [Skills](/docs/skills/) — markdown instruction files loaded into context on demand.
-- [Extend](/docs/extend/) — writing and registering an extension package.
-- [Update](/docs/update/) — `f up`, and `f uck push`.
-- [Recipes](/docs/recipes/) — a worked example: a specific API gap, the wrapper's
-  behavior around it, and the change that closed it. Contains narrative; the
-  reference pages above are the specification.
-
 ## Ucks on npm
 
 - [Ucks](/ucks/) — packages tagged `fcli-uck`, resolved live against npm. It sits
