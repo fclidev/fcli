@@ -22,9 +22,11 @@ exists. MCP declares this up front: every tool definition sits in the request
 body from the first token, so discovery is free at call time but paid on every
 request. `f` discovers at runtime: the agent runs `f` (a one-line name grid,
 61 tokens for 16 ucks) and `f search <query>` (a ranked list, a few tokens per
-match). The discovery cost is a turn, not a body field. Under prefix caching
-both are paid once per session, but the `f` index is a fraction of the tool
-definitions: 61 tokens versus 3,575 for the GitHub server's 26 tools.
+match). The discovery cost is a turn, not a body field. That matters twice:
+the grid is 61 tokens against 3,575 for the GitHub server's 26 tools, and it
+is paid once, not on every request. A session with ten turns pays the `f`
+index 61 tokens total and the MCP definitions 3,575 × 10 = 35,750 (cached: 3,575
+× 10 × 10% = 3,575 on Anthropic, still 58× the grid).
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
