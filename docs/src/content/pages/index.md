@@ -19,8 +19,8 @@ prefix caching and tools/list discovery, `f` with its name grid.
 
 **Discovery.** MCP: one tools/list call, full definitions cached from then on.
 `f`: one `f` call, 61-token name grid cached from then on. Both are paid once
-per session. The `f` grid is 61 tokens; the MCP definitions are 3,575 for the
-GitHub server's 26 tools.
+per session. Per capability, the `f` grid costs 3.8 tokens (61 / 16 ucks); a
+single MCP tool definition costs 77.6–963 tokens.
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
@@ -35,7 +35,7 @@ OpenAI, against 100% on a miss.
 
 |                        | `f`                          | MCP, cached + tools/list |
 | ---------------------- | ---------------------------- | ---------------------: |
-| Discovery, once        | 61 tokens (name grid)        | 3,575 tokens (26 defs) |
+| Discovery, per capability | 3.8 tokens (61 / 16) | 77.6–963 tokens (one def) |
 | In the body, per request | never (names are runtime output) | full definition      |
 | Re-processed, per request | never                     | not after the first    |
 | Steady-state billing   | ≈ 0                          | definition × 10–50%    |
