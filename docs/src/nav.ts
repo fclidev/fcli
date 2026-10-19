@@ -24,7 +24,7 @@ export interface NavSection {
 }
 
 export const PAGES: NavSection[] = [
-  { title: "Start", items: ["index", "install", "quickstart"] },
+  { title: "Start", items: ["index", "install", "quickstart", "examples"] },
   { title: "Core", items: ["docs/ucks", "docs/config", "docs/skills", "docs/credentials"] },
   { title: "Extend", items: ["docs/extend", "docs/update", "docs/recipes"] },
   { title: "Reference", items: ["docs/builtins", "docs/measurements"] },
@@ -93,6 +93,7 @@ export const LABELS: Record<string, string> = {
   index: "Overview",
   install: "Install",
   quickstart: "Quickstart",
+  examples: "Examples",
   ucks: "Ucks",
   "docs/ucks": "Ucks",
   "docs/config": "Config",

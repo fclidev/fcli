@@ -132,6 +132,8 @@ arbitrary GitHub repo or npm package. See [Config](/docs/config/).
 
 - [Install](/install/) — `npm i -g @fcli.dev/f`, and what the first run writes.
 - [Quickstart](/quickstart/) — run `f`, search it, add a uck, run it.
+- [Examples](/examples/) — a uck an agent wrote in one session, in full: the file,
+  the help text, and what it learned along the way.
 - [Builtins](/docs/builtins/) — every command present on a fresh install, one section
   each.
 - [Ucks](/docs/ucks/) — the `register(ctx)` contract, the store layout, shadowing.
