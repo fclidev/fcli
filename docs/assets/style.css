@@ -865,30 +865,6 @@ body.home article {
 .compare-col:first-child .compare-count b {
   color: #e8a0a0;
 }
-/* Re-arms the auto-scroll the reader turned off. Sticky to the pane's bottom edge so it
-   is reachable wherever they have scrolled; without it, taking over would be permanent
-   and the only way back would be reloading the page. */
-.follow {
-  position: sticky;
-  bottom: 0.4rem;
-  z-index: 2;
-  display: block;
-  margin: 0 auto;
-  padding: 0.25rem 0.7rem;
-  font: inherit;
-  font-size: 0.72rem;
-  color: var(--code-ink);
-  background: #2a2f35;
-  border: 1px solid #3a4046;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.follow[hidden] {
-  display: none;
-}
-.follow.armed {
-  visibility: hidden;
-}
 @media (prefers-reduced-motion: reduce) {
   .streams-live .ln,
   .streams-live .ln.on {
