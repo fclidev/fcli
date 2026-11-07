@@ -17,6 +17,12 @@ node docs/scripts/count-tokens.mjs --snapshot   # write content/token-measuremen
 these docs is written from. Regenerate it whenever the binary, the store or the
 tokenizer changes.
 
+The committed snapshot is **`f` 0.4.0, measured 2026-11-07**, against a
+fresh-install store (`@fcli.dev/ucks` 0.4.1, 7 ucks) with `js-tiktoken` 1.0.21.
+Every `f` figure on this site is from that run unless it says otherwise; the one
+exception is the pre-names-only listing (375/374), which is a historical
+measurement of the pre-0.4 binary and is labelled as such in the snapshot.
+
 ## Tokenizer
 
 Counts come from [`js-tiktoken`](https://www.npmjs.com/package/js-tiktoken)
@@ -67,23 +73,31 @@ added uck has two parts, and only one of them is a name:
 
 Marginal cost — 4.00 tokens per uck — is measured directly, on a throwaway store
 of identical 5-character names, and is flat from 1 name to 32. Marginal and
-average are distinct and both are in the snapshot: on the real 17-uck store the
-average is 3.6, lower because real names vary in length. The two are not
-interchangeable, and an earlier version of these docs printed the average under a
-heading that said "per uck".
+average are distinct and both are in the snapshot: on the fresh-install store —
+the 7 ucks `@fcli.dev/ucks` seeds — the grid itself is 16 tokens for 7 names, so
+2.3 per uck, below the marginal floor because real names pack into wider columns
+than the synthetic 5-character probe assumes. The two are not interchangeable,
+and an earlier version of these docs printed the average under a heading that
+said "per uck".
 
 Projection above the measured store uses the marginal, which is conservative.
 
 | Ucks installed | `f` index (names only) | full listing (name + desc) |
 | -------------: | ---------------------: | -------------------------: |
-|             16 |                     61 |                        376 |
+|              7 |                     36 |                        154 |
 |             24 |                    116 |                          — |
 |             72 |                    308 |                          — |
 |            256 |                  1,044 |                          — |
 
+The 7-uck row is the fresh-install store, counted directly. The 24/72/256 rows
+are counted on synthetic stores of identical 5-character names, so they are
+comparable to each other and to the marginal — and **not** to the 7-uck row:
+real names are longer than `u0001`, so a real 24-uck store costs more than the
+116 in that row.
+
 The "full listing" column is `f`'s pre-names-only output: a description per
-command, every session. At 16 ucks, 376 tokens against 61. Per line that is 6 to
-27 tokens (mean 15.3), set by how long each author wrote the description — so it
+command, every session. At 7 ucks, 154 tokens against 36. Per line that is 6 to
+27 tokens (mean 16.4), set by how long each author wrote the description — so it
 grows with the store whether or not the added command is ever used.
 
 ## One definition, quoted in full
@@ -236,9 +250,12 @@ on the discount being favorable.
 - Nothing here measures model behaviour. No benchmark shows agents call MCP tools
   less often because definitions are long, or prefer a CLI when both are present.
   This page counts bytes on a wire, and argues from cost alone.
-- `f`'s own numbers are one store on one machine. The store is the default bundle
-  plus a personal bucket; a different set of ucks changes the index size, which is
-  why cost is published per uck and per store size rather than as one total.
+- `f`'s own numbers are one store on one machine: the fresh-install store, i.e.
+  `@fcli.dev/ucks` 0.4.1 with nothing else configured. An earlier snapshot
+  measured a store that also carried a personal bucket, and its figures could not
+  be reproduced once that bucket gained ucks — which is why the store is now the
+  reproducible one. A different set of ucks changes the index size, which is why
+  cost is published per uck and per store size rather than as one total.
 - Token figures date. The two servers re-measured above came out 20% above a
   sample three weeks older; Playwright's tool count differs between two files in
   one repository. Re-measure before quoting a specific number.

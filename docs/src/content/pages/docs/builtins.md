@@ -29,8 +29,8 @@ f <uck> --help | f search <query>
 ```
 
 Names only. A name-plus-description listing grows with the store — measured at
-376 tokens for 16 ucks against 61 for names alone — so it is not the default
-surface. Read one description with `f <uck> --help`, or get a filtered set with
+154 tokens for the 7 ucks of a fresh install against 36 for names alone — so it
+is not the default surface. Read one description with `f <uck> --help`, or get a filtered set with
 `f search <query>` — see [Core builtins](#core-builtins).
 
 `help` and `up` are not in that list: they are special-cased in core rather
@@ -39,10 +39,22 @@ than ucks in the store — see [Core builtins](#core-builtins).
 ## v
 
 ```sh
-f v          # 0.3.1
+f v          # 0.4.0
 ```
 
 Prints f's own version — the version of the `f` binary, not of the ucks.
+
+`f --version` and `f -V` print the same string, and they are handled in core
+rather than by this uck:
+
+```sh
+f --version
+f -V
+```
+
+That matters on a machine where the store has not been populated yet — `f v` is
+a uck, so it needs the store, while `f --version` answers on a bare install. See
+[Core builtins](#core-builtins).
 
 ## config
 
@@ -167,17 +179,18 @@ Pushes are fast-forward only, never `--force`; authentication is delegated to
 
 ## Core builtins
 
-Two commands are handled in core, before the uck registry is consulted, so
+Three commands are handled in core, before the uck registry is consulted, so
 they work even with an empty store:
 
-| Command  | Behavior                                                   |
-| -------- | ---------------------------------------------------------- |
-| `f help` | List every uck name, no descriptions. Also the no-arg `f`. |
-| `f up`   | Re-fetch every configured source into the store.           |
+| Command       | Behavior                                                   |
+| ------------- | ---------------------------------------------------------- |
+| `f help`      | List every uck name, no descriptions. Also the no-arg `f`. |
+| `f --version` | Print f's version. Also `f -V`.                            |
+| `f up`        | Re-fetch every configured source into the store.           |
 
-`f help`, `f --help`, `f -h`, and bare `f` are the same thing. Both are handled
-before the uck registry is consulted, so they answer even with an empty store —
-which is exactly why they are core and not ucks. `f up` is the
+`f help`, `f --help`, `f -h`, and bare `f` are the same thing. All three are
+handled before the uck registry is consulted, so they answer even with an empty
+store — which is exactly why they are core and not ucks. `f up` is the
 only routine run that touches the network — see [Update](/docs/update/).
 
 `f search` is **not** in that table: it is an ordinary uck in the default bundle,

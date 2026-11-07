@@ -18,9 +18,9 @@ Three costs, compared assuming both sides use their best strategy: MCP with
 prefix caching and tools/list discovery, `f` with its name grid.
 
 **Discovery.** MCP: one tools/list call, full definitions cached from then on.
-`f`: one `f` call, 61-token name grid cached from then on. Both are paid once
-per session. Per capability, the `f` grid costs 3.8 tokens (61 / 16 ucks); a
-single MCP tool definition costs 77.6–963 tokens.
+`f`: one `f` call, 36-token name grid cached from then on. Both are paid once
+per session. Per capability, the `f` grid costs 5.1 tokens (36 / 7 ucks on a
+fresh install); a single MCP tool definition costs 77.6–963 tokens.
 
 **Compute.** Re-reading a prompt prefix is what makes a request slow. Prefix
 caching removes that: the tool definitions are tokenized into the model once, and
@@ -35,7 +35,7 @@ OpenAI, against 100% on a miss.
 
 |                        | `f`                          | MCP, cached + tools/list |
 | ---------------------- | ---------------------------- | ---------------------: |
-| Discovery, per capability | 3.8 tokens (61 / 16) | 77.6–963 tokens (one def) |
+| Discovery, per capability | 5.1 tokens (36 / 7) | 77.6–963 tokens (one def) |
 | In the body, per request | never (names are runtime output) | full definition      |
 | Re-processed, per request | never                     | not after the first    |
 | Steady-state billing   | ≈ 0                          | definition × 10–50%    |
@@ -58,7 +58,7 @@ So the defensible claims are the two the cache does not remove:
 
 Discovery does not fix either: tools/list puts the full definitions in the
 context window, and caching only discounts their rate. `f` has neither failure
-mode: the name grid is 61 tokens that occupy 0.03% of a 200k window, and it is
+mode: the name grid is 36 tokens that occupy 0.02% of a 200k window, and it is
 paid once.
 
 No host process on the `f` side: one binary on `PATH`, no daemon. Details in

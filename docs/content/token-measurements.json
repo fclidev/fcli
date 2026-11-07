@@ -1,40 +1,40 @@
 {
   "_comment": "Snapshot of `node scripts/count-tokens.mjs --snapshot`. Every number here is counted from the `f` binary's own output or from a real store — none is typed by hand. docs/content/index.md quotes these figures; regenerate this file rather than editing it.",
   "generatedBy": "docs/scripts/count-tokens.mjs",
-  "generatedAt": "2026-10-18",
+  "generatedAt": "2026-11-07",
   "tokenizer": "js-tiktoken 1.0.21",
   "ranks": [
     "o200k_base",
     "cl100k_base"
   ],
-  "fVersionMeasured": "0.3.3",
-  "binary": "/home/kenny/git/fcli/dist/index.js",
-  "store": "/home/kenny/.f/ucks",
-  "ucksInStore": 16,
+  "fVersionMeasured": "0.4.0",
+  "binary": "/root/work/fcli-docs-fix/dist/index.js",
+  "store": "/tmp/ffresh-Ya42/.f/ucks",
+  "ucksInStore": 7,
   "discovery": {
     "index": {
-      "ucks": 16,
-      "o200k_base": 61,
-      "cl100k_base": 62,
-      "averagePerUckThisStore": 3,
+      "ucks": 7,
+      "o200k_base": 36,
+      "cl100k_base": 35,
+      "averagePerUckThisStore": 5.1,
       "marginalPerUck": 4,
       "note": "names only, columnised grid; marginal cost is the name itself"
     },
     "search": [
       {
         "query": "ssh",
-        "o200k_base": 14,
-        "cl100k_base": 13
+        "o200k_base": 7,
+        "cl100k_base": 7
       },
       {
         "query": "credential",
-        "o200k_base": 33,
-        "cl100k_base": 34
+        "o200k_base": 21,
+        "cl100k_base": 20
       },
       {
         "query": "list files",
-        "o200k_base": 29,
-        "cl100k_base": 29
+        "o200k_base": 17,
+        "cl100k_base": 17
       },
       {
         "query": "nothingzzz",
@@ -48,13 +48,13 @@
       "ucks": 16,
       "measuredFrom": "git worktree of 86b3445, `npx tsx src/index.ts` (the real pre-change binary)",
       "reconstruction": {
-        "o200k_base": 376,
-        "cl100k_base": 375
+        "o200k_base": 154,
+        "cl100k_base": 154
       },
       "perUckLine": {
         "min": 6,
-        "max": 37,
-        "mean": 20.8
+        "max": 27,
+        "mean": 16.4
       }
     }
   },
@@ -88,19 +88,14 @@
   "_encoders": "o200k_base and cl100k_base agree on invocation strings and short queries; they diverge by 1-2 tokens per line on descriptions dense with slashes or hyphens. See `disagree` below rather than assuming agreement.",
   "disagree": [
     {
-      "label": "f (index), 16 ucks (this store)",
-      "o200k_base": 61,
-      "cl100k_base": 62
-    },
-    {
-      "label": "f search ssh",
-      "o200k_base": 14,
-      "cl100k_base": 13
+      "label": "f (index), 7 ucks (this store)",
+      "o200k_base": 36,
+      "cl100k_base": 35
     },
     {
       "label": "f search credential",
-      "o200k_base": 33,
-      "cl100k_base": 34
+      "o200k_base": 21,
+      "cl100k_base": 20
     },
     {
       "label": "f search nothingzzz",
@@ -108,39 +103,9 @@
       "cl100k_base": 9
     },
     {
-      "label": "f help with descriptions, 16 ucks (pre-0.4 shape)",
-      "o200k_base": 376,
-      "cl100k_base": 375
-    },
-    {
       "label": "index cost per uck (grid only, average over this store)",
-      "o200k_base": 48,
-      "cl100k_base": 49
-    },
-    {
-      "label": "kensand-fcli-ucks/vaultwarden",
-      "o200k_base": 17,
-      "cl100k_base": 19
-    },
-    {
-      "label": "kensand-fcli-ucks/ha-ws",
-      "o200k_base": 26,
-      "cl100k_base": 25
-    },
-    {
-      "label": "kensand-fcli-ucks/gh",
-      "o200k_base": 31,
-      "cl100k_base": 29
-    },
-    {
-      "label": "kensand-fcli-ucks/ssh",
-      "o200k_base": 33,
-      "cl100k_base": 32
-    },
-    {
-      "label": "kensand-fcli-ucks/fj",
-      "o200k_base": 37,
-      "cl100k_base": 38
+      "o200k_base": 36,
+      "cl100k_base": 35
     }
   ],
   "mcpReference": {
