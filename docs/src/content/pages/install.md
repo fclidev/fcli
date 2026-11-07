@@ -16,12 +16,16 @@ npm install -g @fcli.dev/f
 Verify:
 
 ```sh
-f v
+f --version
 ```
 
+`f --version` (or `f -V`) is answered by core, so it works before the uck store
+has been populated. `f v` prints the same string once the default ucks are
+installed.
+
 The npm package is `@fcli.dev/f`; the binary it installs is `f`. The published
-package trails the source repo by a release — `f v` tells you which build you
-actually have.
+package trails the source repo by a release — `f --version` tells you which build
+you actually have.
 
 ## Git install (dev)
 

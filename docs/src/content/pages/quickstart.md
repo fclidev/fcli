@@ -10,7 +10,7 @@ After [installing](/install/) `f`:
 ```sh
 f            # the index: every uck name, no descriptions
 f search <q> # rank ucks against a query (name, then description)
-f v          # print the version
+f --version  # print the version (core; also `f -V`, or `f v`)
 f config get ucks  # read f's own config
 ```
 
@@ -25,7 +25,7 @@ and installs it into the store. The defaults are:
 
 | Uck           | Description                                         |
 | ------------- | --------------------------------------------------- |
-| `f v`         | print version                                       |
+| `f v`         | print version (`f --version` / `f -V` do the same)  |
 | `f config`    | edit `f.config.json` via JSONPath                   |
 | `f creds`     | store credentials (encrypted, daemon, TTL)          |
 | `f providers` | list credential providers registered with `f creds` |
