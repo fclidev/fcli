@@ -5,7 +5,7 @@ summary: Install f from npm (or from git for a dev install). What happens on fir
 
 # Install
 
-`f` needs **Node 20 or newer**.
+`f` needs **Node 22.14 or newer**.
 
 ## npm
 

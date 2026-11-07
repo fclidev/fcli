@@ -1,6 +1,6 @@
 ---
 title: Builtins
-summary: Every uck that ships with f — v, w, ls, config, creds, providers, skills, uck — plus the core builtins help and up.
+summary: Every uck that ships with f — config, creds, providers, search, skills, uck, v — plus the core builtins help and up.
 ---
 
 # Builtins
@@ -189,7 +189,7 @@ not match. See [fcli-ucks](https://github.com/fclidev/fcli-ucks).
 
 ## Where they live
 
-The eight ucks above are ucks like any other: plain `index.js` files in a repo
+The seven ucks above are ucks like any other: plain `index.js` files in a repo
 you could fork, not code compiled into the binary. What makes them builtin is
 that they arrive automatically — the first install seeds that repo into the
 global config. Adding your own ucks is the same mechanism pointed at a
