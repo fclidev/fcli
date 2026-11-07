@@ -112,7 +112,9 @@ f ddg cat pictures
 
 `f config add ucks <source>` accepts a git repo, a local directory, or an npm
 package; `f up` fetches every configured source into `~/.f/ucks/`. The bucket is
-a live git clone, so the installed command is the repo you can read and blame:
+named after the source — the last path segment of the URL, minus `.git` — so it
+is a live git clone, and the installed command is the repo you can read and
+blame:
 
 ```console
 $ ls ~/.f/ucks/kensand-fcli-ucks/ddg/

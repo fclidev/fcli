@@ -70,7 +70,11 @@ Add it to the `ucks` array — an npm package is a source like any other:
 
 Source formats:
 
-- **npm** — `"@scope/name"` — must be in `node_modules`, resolved at load.
+- **npm** — `"@scope/name"` — fetched with `npm pack` into a bucket under
+  `~/.f/ucks/` on `f up`, and loaded from there. It does **not** need to be in
+  your project's `node_modules`. (A legacy path still resolves an npm source
+  through `node_modules` if one happens to be installed there; see
+  [Precedence](#precedence).)
 - **local** — `"./my-ext"` or `"/abs/path"` — a dir with `package.json` or
   `index.js`.
 - **git** — `"github:user/repo"` or `"git+https://…"`.
@@ -113,6 +117,10 @@ No sandbox. No restrictions. Ucks are first-class.
 
 ## Precedence
 
-Later sources win. Store ucks load first, then npm sources, so an npm package
-shadows a same-named uck from the store; within each group, project config
-loads after global. See [Ucks](/docs/ucks/) for shadowing.
+Later sources win, and load order is: store buckets first, then any npm source
+that also resolves through `node_modules`. Since npm sources are installed _as_
+store buckets, an npm package normally shadows a same-named uck from an earlier
+bucket — the shadowing is bucket order, not npm-versus-store. The
+`node_modules` step only fires for installs that predate store installs of npm
+sources, and it is silent when the specifier does not resolve there. Within each
+group, project config loads after global. See [Ucks](/docs/ucks/) for shadowing.

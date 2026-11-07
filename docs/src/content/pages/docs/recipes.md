@@ -14,7 +14,7 @@ wrapper assumes JSON, and what an agent does to work around the gap.
 
 ## Background
 
-The [`f fj` uck](https://github.com/fclidev/fcli-ucks/tree/main/fj)
+The [`f fj` uck](https://github.com/kensand/kensand-fcli-ucks/tree/main/fj)
 existed before any of this. It wraps the
 [@llamaduck/forgejo-ts](https://www.npmjs.com/package/@llamaduck/forgejo-ts)
 SDK — all 491 generated REST endpoints, exposed by name
@@ -102,8 +102,9 @@ small edit to the uck that already owned Forgejo auth, base-URL
 resolution, and error reporting. That is the contract paying off:
 `f fj` is a directory with an `index.js`
 ([the uck contract](/docs/ucks/)), so extending it means editing a file —
-no new package, no new config, no deployment. The change landed in
-fcli-ucks and was published with `f uck push fj`:
+no new package, no new config, no deployment. The change landed in the
+[`fj` bucket](https://github.com/kensand/kensand-fcli-ucks/tree/main/fj) and was
+published with `f uck push fj`:
 
 - **`f fj runs [newest|<run_id>]`** — list recent runs as
   `<id>  status  event  sha  ref  duration`, or show one run plus its
@@ -228,6 +229,6 @@ f fj runs newest && f fj joblogs 3774 "--- FAIL"
 - **Repo** — `runs`/`joblogs` default to the git origin of the current
   directory; `--repo owner/name` points elsewhere.
 - **Extending it further** — the words live in
-  [fcli-ucks](https://github.com/fclidev/fcli-ucks) under `fj/`; it is one
-  `index.js`. If your instance's Actions surface differs, edit the file and
-  `f uck push fj`.
+  [kensand-fcli-ucks](https://github.com/kensand/kensand-fcli-ucks/tree/main/fj)
+  under `fj/`; it is one `index.js`. If your instance's Actions surface differs,
+  edit the file and `f uck push fj`.
