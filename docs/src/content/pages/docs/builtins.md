@@ -163,10 +163,15 @@ f skills rm <name>           # remove a skill
 
 ## uck
 
-Push ucks from the store to a git repo. The bucket name is the link: a push
-target named `mine` mirrors `~/.f/ucks/mine/`.
+Scaffold ucks, validate them against the contract, and push them from the store
+to a git repo. The bucket name is the link: a push target named `mine` mirrors
+`~/.f/ucks/mine/`.
 
 ```sh
+f uck new greet                            # scaffold into the first git-clone bucket
+f uck new greet --bucket mine --desc "say hi"
+f uck check                                # your own ucks (git-clone buckets)
+f uck check greet --all                    # named ucks, every bucket
 f uck repo add mine https://…/my-ucks.git [--ref main]
 f uck repo ls                              # targets + their store ucks
 f uck repo rm mine
@@ -174,8 +179,21 @@ f uck push -r mine                         # every uck in bucket 'mine'
 f uck push greet ls -r mine                # only these ucks
 ```
 
-Pushes are fast-forward only, never `--force`; authentication is delegated to
-`git`. See [Update](/docs/update/).
+`new` writes a contract-compliant `index.js` + `package.json` pair into a bucket.
+The name must be lowercase alphanumerics and dashes. With no `--bucket` it picks
+the first bucket that is a git clone — a real repo to commit to — and if none
+is, it stops and asks for `--bucket` rather than guessing.
+
+`check` validates uck dirs against CONTRACT.md. Its default scope is **git-clone
+buckets only**, so on a store of plain installs with no `--all` it finds nothing,
+prints `check found no uck dirs` to stderr and exits 1. That is the scope rule,
+not a broken command: pass `--all` (or `-a`) to include the rest.
+
+`push` rebases by default — it fetches, applies the store's changes as a commit,
+and rebases them onto the remote, which keeps history linear. `--no-rebase` takes
+the simpler fast-forward-only path instead (fresh clone, store overwrites, push);
+`--rebase` forces the default. Neither path ever passes `--force` to `git`, and
+authentication is delegated to `git`. See [Update](/docs/update/).
 
 ## Core builtins
 
