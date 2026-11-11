@@ -93,24 +93,22 @@ re-mirrors it. To stop a name resolving, remove it at the source.
 | flag          | meaning                                                                       |
 | ------------- | ----------------------------------------------------------------------------- |
 | `--secrets`   | print the value; without it the output is redacted                            |
-| `--local`     | never consult providers                                                       |
+| `--local`     | box only: never consult providers, and a local miss exits 1                    |
 | `--vault`     | skip the local value and the mirror, revalidate with the provider now         |
 | `--source`    | print provenance to stderr (`local:<name>`, `<provider>:<name> (mirrored)`)   |
 | `--no-cache`  | ignore **and clear** the negative cache for that name first                   |
 
-**`--local` does not work on `get` — use `creds lookup --local`.** The `get` handler
-never reads the flag: `--local` sets `localOnly`, and `case "get"` calls the provider
-ladder unconditionally on a local miss, so the flag is parsed and then discarded.
-`creds lookup` does honour it. Confirmed against `creds/index.js` rather than inferred,
-and the two are not equivalent:
+`--local` restricts the command to the box on your machine. Neither `get` nor
+`lookup` consults a provider, and neither serves a `mirror:<name>` entry: a miss is
+reported as a miss, with exit 1.
 
 ```sh
-f creds lookup <name> --local   # f: no such cred   <- correct, providers skipped
-f creds get <name> --local      # serves the provider value anyway
+f creds get <name> --local      # box only — f: no such cred: <name> if it is not here
+f creds lookup <name> --local   # same rule, machine-facing output
 ```
 
-Pass `--source` alongside `get` when provenance matters: `f: source: <provider>:<name>
-(mirrored)` on a value you asked to be local-only is how you catch this.
+Use it to tell a real local secret apart from a provider mirror. `--source` still
+works alongside it, and a local hit reports `f: source: local:<name>`.
 
 ### The miss cache
 
