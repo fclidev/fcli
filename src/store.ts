@@ -314,6 +314,25 @@ export async function installSource(
   src: UckSource,
   force = false,
 ): Promise<boolean> {
+  const r = await installSourceResult(src, force);
+  return r.changed;
+}
+
+/**
+ * installSource, with the outcome the summary actually needs.
+ *
+ * installSource answers "did store content change?", and that is the right
+ * question for its store-empty caller in cli.ts. It is the WRONG question for a
+ * caller that needs to know whether the update SUCCEEDED, because a failed
+ * install and a no-op refresh both answer false. That conflation is why `f up`
+ * used to print `f: failed to install <bucket> (git fetch failed: ...)` and exit
+ * 0: nothing downstream could tell a broken bucket from an up-to-date one, so a
+ * permanently broken bucket looked healthy to every script checking $?.
+ */
+export async function installSourceResult(
+  src: UckSource,
+  force = false,
+): Promise<{ changed: boolean; failed: boolean }> {
   const { specifier } = normalizeSource(src);
   const kind = sourceKind(specifier);
   const filters = subsetFilters(src);
@@ -327,30 +346,36 @@ export async function installSource(
           `(${hit}). A store bucket is a cache, not an editing surface: install ` +
           `from a separate clone instead.`,
       );
-      return false;
+      // A refusal is a failure, not an unchanged bucket: the caller asked for an
+      // install and got none.
+      return { changed: false, failed: true };
     }
-    return installLocal(specifier, force, bucket);
+    return changedResult(await installLocal(specifier, force, bucket));
   }
 
   if (kind === "npm") {
     try {
-      return installNpmSource(specifier, force, filters, bucket);
+      return changedResult(await installNpmSource(specifier, force, filters, bucket));
     } catch (e) {
       const msg = e instanceof Error ? e.message.split("\n")[0] : String(e);
       console.error(
         `f: failed to install ${specifier} (${msg.split("\n")[0]})`,
       );
-      return false;
+      return { changed: false, failed: true };
     }
   }
 
   try {
-    return installGitSource(specifier, force, filters, bucket);
+    return changedResult(await installGitSource(specifier, force, filters, bucket));
   } catch (e) {
     const msg = e instanceof Error ? e.message.split("\n")[0] : String(e);
     console.error(`f: failed to install ${specifier} (${msg.split("\n")[0]})`);
-    return false;
+    return { changed: false, failed: true };
   }
+}
+
+function changedResult(changed: boolean): { changed: boolean; failed: boolean } {
+  return { changed, failed: false };
 }
 
 /**
