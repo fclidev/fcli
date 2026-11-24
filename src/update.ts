@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { allSources } from "./config.js";
 import {
-  installSource,
+  installSourceResult,
   installedRepos,
   sourceBucket,
 } from "./store.js";
@@ -160,6 +160,7 @@ async function runSources(
 ): Promise<void> {
   let ok = 0;
   let unchanged = 0;
+  let failed = 0;
   // One lock for the whole update, not one per source: f up is fetch + reset
   // --hard + clean across every bucket, and releasing between sources would let
   // another process clone or copy into a bucket mid-sequence.
@@ -169,8 +170,9 @@ async function runSources(
   const release = opts.__noLockForTests ? () => {} : await acquireStoreLock();
   try {
     for (const src of sources) {
-      const changed = await installSource(src, true);
-      if (changed) ok++;
+      const r = await installSourceResult(src, true);
+      if (r.failed) failed++;
+      else if (r.changed) ok++;
       else unchanged++;
     }
   } finally {
@@ -180,7 +182,17 @@ async function runSources(
   const parts = [];
   if (ok) parts.push(`${ok} updated`);
   if (unchanged) parts.push(`${unchanged} unchanged`);
+  if (failed) parts.push(`${failed} FAILED`);
   console.error(`f: update complete — ${parts.join(", ") || "nothing to do"}\n`);
+
+  // A failed source must be visible to a script, not just to a human reading
+  // stderr. Before this, a bucket whose fetch was rejected forever printed
+  // `failed to install` and exited 0, so `f up && deploy` treated a broken
+  // store as a refreshed one.
+  //
+  // exitCode, not exit(): see the note at the bottom of cli.ts — exit() skips
+  // the stdout drain and can drop output already written.
+  if (failed > 0) process.exitCode = 1;
 }
 
 interface DirtyBucket {
